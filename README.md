@@ -9,7 +9,15 @@ October 27 to November 4, 2026.
 ## Built during the hackathon
 
 Work in progress. Each component is listed here as it lands, and the commit
-history shows when.
+history shows when. The full build log is in [DEVLOG.md](DEVLOG.md).
+
+- **Verified evaluation data** (`benchmark/fetch_data.py`). Fetches
+  GroundingBench's 720 held-out traces from a pinned commit and accepts each
+  file only after a SHA-256 check and a trace-count check. Downloads are
+  atomic: an interrupted or tampered fetch never leaves a usable-looking file.
+- **Label-free guarantee** (`tests/test_packaging.py`). A test that fails if
+  the overseer package ever imports the grader or reads a ground-truth field,
+  so Pinpoint provably audits traces without seeing their answers.
 
 ## Prior work (GroundingBench)
 

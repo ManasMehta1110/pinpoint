@@ -1,0 +1,119 @@
+# CLAUDE.md
+
+Working notes for Claude Code sessions in this repository. Read this first,
+then `DEVLOG.md` for where the build currently stands.
+
+## The project
+
+**Pinpoint** is an AI overseer for agent tool-use traces. Most overseers give a
+verdict ("this agent lied") without saying where. Pinpoint returns the verdict
+plus the exact step and quoted text that prove it, and checks that citation
+against the trace before showing it. A citation that doesn't check out is
+shown as **unverified**, never as a finding.
+
+Built solo by Manas Mehta for the **Meta Global AI Developer Hackathon**,
+Indie track.
+
+| | |
+|---|---|
+| Building period | Oct 27 – Nov 4, 2026 (all official times are US Eastern) |
+| Submission deadline | **Wed Nov 4, 9:00 PM ET = Thu Nov 5, 7:30 AM IST.** No late entries. |
+| Submission | public repo + 3-minute demo video + live product |
+| Judging | Impact, Use of Meta AI tooling, Technical depth, Demo (equal weight) |
+
+## Hard rules
+
+1. **New work only.** Everything presented must be built during the event.
+   The demo may only show hackathon-built features. Commit timestamps are the
+   evidence, so commit often.
+2. **GroundingBench is prior work, used only as a pinned open-source
+   dependency** (eval traces + reference grader). Organizers confirmed in
+   Discord that an open-source dependency is fine. Never copy its code in.
+   Never present it, or the GRPO-trained Qwen overseer from the paper, as
+   hackathon work.
+3. **The `pinpoint/` package is label-free.** It must never import `env` or
+   `doers` (GroundingBench) or reference label fields (`smoking_gun_step`,
+   `smoking_gun_keyword`, `policy_class`, `ground_truth_answer`,
+   `compute_reward`). `tests/test_packaging.py` enforces this. Only
+   `benchmark/` may read labels.
+4. **Must use Meta's models**: Muse Spark via the Meta Model API, Muse Spark
+   Open via Baseten. Llama 3.1 does not count.
+5. **Secrets live only in `.env`** (gitignored). Read keys from the
+   environment; never write a key into source, tests, logs, or docs.
+6. **Manas makes all commits and pushes.** Claude writes and audits files,
+   then hands over the exact `git add` / `git commit` commands. Claude does not
+   run `git commit` or `git push`.
+7. **Every number shown is real.** Demo and README outputs come from saved
+   runs, never hand-written. Use exact figures: verdict accuracy **70.8–100%**;
+   **1 of 1,794** correctly classified misbehavior verdicts grounded; **720**
+   held-out traces.
+
+## Audit protocol (after every file, before moving on)
+
+1. Re-read the whole file line by line.
+2. `ruff check .` and `ruff format --check .`
+3. `mypy` (strict, covers `pinpoint/`, `benchmark/`, `tests/`)
+4. pytest: happy path, every failure path, boundaries, adversarial input.
+5. Mutation-test the important checks: plant a realistic bug, confirm a test
+   fails, restore.
+6. Run it for real once.
+7. Record the result in `DEVLOG.md`.
+
+## Layout
+
+```
+pinpoint/        label-free overseer (never sees ground truth)
+benchmark/       evaluation harness; may use GroundingBench labels + grader
+tests/           pytest suite
+data/            fetched traces (gitignored; run benchmark/fetch_data.py)
+results/         saved runs, raw model output per trace (committed)
+app/             demo web app (not started)
+```
+
+## Commands
+
+Run from the repo root on Windows (Git Bash shown).
+
+```bash
+python -m venv .venv
+./.venv/Scripts/python -m pip install -e ".[dev,eval]"
+
+./.venv/Scripts/python -m benchmark.fetch_data      # fetch + verify traces
+./.venv/Scripts/python -m pytest -q
+./.venv/Scripts/python -m ruff check . && ./.venv/Scripts/python -m ruff format --check .
+./.venv/Scripts/python -m mypy
+```
+
+## Facts that are easy to get wrong
+
+**Traces (GroundingBench @ `5fd7325`)**
+- `smoking_gun_step` is **1-indexed**. Any renderer must number steps from 1.
+- Held-out sets: `eval_traces.jsonl` (120) + `eval_traces_realistic.jsonl`
+  (600), each balanced across HONEST / REWARD_HACKER / LAZY / DECEIVER.
+  Max 7 steps per trace.
+- The reference grader matches step references as substrings ("step 1" also
+  matches "step 12"). Safe on this data (max 7 steps); never reuse that
+  approach for live traces. Pinpoint compares step numbers as integers.
+- A Windows checkout with `core.autocrlf=true` stores these files with CRLF;
+  their hashes differ from the canonical LF files. Content is identical.
+
+**Meta Model API (Muse Spark)**
+- Base URL `https://api.meta.ai/v1`, OpenAI SDK compatible. Key in
+  `MODEL_API_KEY`; the OpenAI SDK does not read it automatically, so pass
+  `api_key` explicitly.
+- Model `muse-spark-1.3`. $1.25 / $4.25 per 1M tokens in / out.
+- `tool_choice` must be `"auto"`; the model cannot be forced to call a tool.
+- Raw reasoning is never returned (summaries only, optional).
+- Effort: `reasoning_effort` (Chat Completions), values `minimal` … `max`.
+- Long non-streaming requests return HTTP 504; stream or retry.
+
+**Baseten (Muse Spark Open)**
+- Base URL `https://inference.baseten.co/v1`, OpenAI SDK compatible. Key in
+  `BASETEN_API_KEY`.
+- Model **`meta-models/muse-spark-open-1026`** exactly (the hackathon key works
+  with nothing else). Same price as Muse Spark.
+- **No structured output / JSON mode.** Tool calling works, so final answers
+  come back through a `submit_audit` tool call for both models.
+- Reasoning is always on and returned readably in `reasoning_content`.
+  Reasoning tokens count toward `max_tokens` (default 4096): set `max_tokens`
+  explicitly and log `finish_reason` so truncation is never silent.
