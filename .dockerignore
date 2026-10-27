@@ -1,0 +1,16 @@
+# Only pyproject.toml, README.md, LICENSE, pinpoint/ and app/ are copied.
+# Everything else stays out of the build context, secrets above all.
+.env
+.env.*
+.git
+.venv
+data
+results
+benchmark
+tests
+deploy
+**/__pycache__
+*.egg-info
+.mypy_cache
+.pytest_cache
+.ruff_cache

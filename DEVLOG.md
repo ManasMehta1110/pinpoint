@@ -842,9 +842,98 @@ every step is a document, so only the checks can reject.
 
 ---
 
+### 20:31 · Demo app: compare, audit live, try to fool the verifier · (uncommitted)
+
+**What.** `app/`: a FastAPI server over the `pinpoint` package and one page
+(`app/static/index.html`, inline CSS and JS, no external requests). Three tabs:
+
+- **Compare.** Seven real traces, each with two saved audits: single citation
+  and Pinpoint, both Muse Spark Open. Four substitutions (Louvre/Rome,
+  penicillin 1935, heart transplant London, Versailles/Buckingham Palace),
+  two mid-trace finds (`assert True`, a false PR comment) and one known limit
+  (mid-trace line 16: Pinpoint filed the misleading claim as the offense).
+  Citations are highlighted on the exact characters; the single-slot model's
+  reasoning is quoted verbatim.
+- **Audit live.** Any trace as JSON, or an example, audited by Pinpoint on
+  Muse Spark Open. Shows verdict, verified citations highlighted, retries,
+  latency, tokens, cost and the model's reasoning.
+- **Try to fool the verifier.** Any step and quote, checked by the verifier
+  as you type, with presets (document as offense, paraphrase, right quote at
+  the wrong step, vague quote, the real offense). No model call.
+
+**Pieces.**
+- `app/highlight.py`: maps a verified quote back to its characters. Folds the
+  step text like `normalize()`, one character at a time with a map back to
+  the source, and returns no span if the fold disagrees with `normalize()`.
+- `app/views.py`: trace and audit as page JSON, shared by gallery and live
+  audit. Only verified citations get a span.
+- `app/examples.py`: builds `app/static/examples.json` from saved runs. Each
+  pick is checked against the data (a substitution must show single citing a
+  `read_document` and Pinpoint citing the labelled step with a contradiction;
+  a limit must be a Pinpoint miss), and each reasoning excerpt must be
+  verbatim in the saved reasoning, or the build fails. Titles and blurbs are
+  the only hand-written text.
+- `app/server.py`: `/api/status`, `/api/verify` (free), `/api/audit` (live).
+  Caps in memory: 300 audits a day, 10 per visitor per hour (first
+  X-Forwarded-For address, soft), 4 at a time (extra requests are refused,
+  not queued), 64 KB bodies, 30 steps, 24,000 rendered characters. Provider
+  errors never reach the response. Client timeout 90 s, one retry. No API
+  docs exposed. Without a key the gallery and verifier work and live audits
+  say they are off.
+
+**Data note.** The gallery bundles seven traces (four from GroundingBench's
+held-out set, three from `midtrace.jsonl`), shown with file and line. This is
+the one place GroundingBench traces are committed; `data/` stays ignored.
+
+**Audit.** Bugs found while building:
+- the highlight real-data test first held every offense to the action scope,
+  but single-slot modes have no offense rule (test bug; scope now from the
+  run's mode);
+- its guessed lower bound (3,000 citations) was wrong: 2,175 verified
+  citations exist, all mapped to the exact characters;
+- the builder read `manifest["commit"]`; the commit is under `code`, which
+  may be null;
+- auto-picked reasoning excerpts were weak, so excerpts are hand-picked and
+  checked verbatim;
+- the first Versailles blurb said the agent found "the Hall of Mirrors",
+  which is not in the trace. Rewritten from the trace's own text. Every blurb
+  was then checked against its trace.
+
+ruff, mypy strict (now covering `app/`) clean; 713 tests pass (71 new). Mutation
+testing: 13 of 14 killed. Survivors: highlighting unverified citations (no
+test had an unverified citation whose quote was locatable; added one, now
+killed) and forcing step scope on the offense span (equivalent: a verified
+offense quote is in the action, which comes first in the step text, so the
+first match is the same). Run for real: live audit of the Louvre trace, 4.3 s,
+$0.006, both citations verified and highlighted; verifier rejects the
+document as an offense with the tool-result reason. The page script has no
+automated test (no Node here); Manas checked every tab and button in a
+browser against the local server, and all worked.
+
+### 21:05 · Deploy files · (uncommitted)
+
+- `Dockerfile` (repo root): python 3.11-slim, uid 1000, copies only
+  `pyproject.toml`, `README.md`, `LICENSE`, `pinpoint/`, `app/`; installs
+  `.[app]`; serves on `PORT` (default 7860). For Render or any Docker host.
+  `.dockerignore` keeps `.env`, `.git`, data, results and tests out of the
+  build context.
+- `deploy/huggingface/`: the two files a Space needs. Its Dockerfile
+  downloads one pinned commit's source archive from GitHub
+  (`PINPOINT_COMMIT`), so the live product is always an exact, inspectable
+  commit, and the GitHub README needs no Space header.
+- No Docker here, so neither image was built locally. Checked instead: the
+  exact build context, installed into a fresh venv (Python 3.12; the image is
+  3.11), serves the page, gallery and verifier, and with no key reports live
+  audits off (503). The archive fetch, run for real against commit `22114ee`,
+  extracts to one `pinpoint-<sha>/` folder as the copy step expects. The first
+  attempt 404'd because I mistyped the hash.
+
+---
+
 ## Next
 
-- Demo app.
+- Deploy: create the Space (or Render service), set `BASETEN_API_KEY`,
+  check the live URL.
 - Muse Spark once the card hold succeeds.
 - If time is left: offense-slot fix (more than one offense, or the earliest
   step) on fresh held-out traces.
