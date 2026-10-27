@@ -124,9 +124,13 @@ python -m venv .venv
 - Every GroundingBench smoking gun is the `submit_answer` step. The offense
   rule does not reveal that, but the benchmark aligns with it; disclose this
   next to any grounding result.
-- `mode="single"` is the ablation baseline (one `evidence` slot, no offense
-  rule). The modes must differ only in their slots, in both the tool and the
-  prompt; tests enforce this.
+- Four modes form a 2x2 factorial (split x rule): `single`, `single_rule`,
+  `two_slot_no_rule`, `two_slot`. Behaviour must come from `has_two_slots()`
+  and `has_offense_rule()`, never from mode-name checks. Modes differ only in
+  their slot section; tests enforce this.
+- `single` and `two_slot` are frozen (`PINNED_MODE_FINGERPRINTS` in
+  `tests/test_prompt.py`): saved runs depend on them. To change behaviour, add
+  a mode.
 
 **Overseer loop (`pinpoint/overseer.py`)**
 - Citation retries (`max_citation_retries`) and format retries

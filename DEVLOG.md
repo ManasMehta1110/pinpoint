@@ -517,7 +517,7 @@ repository to check all four cases, and reverting the fix fails it.
 **Caveats**: one model, one run per cell, 120 traces; the benchmark's smoke
 guns all sit in the agent's final answer, which the offense rule aligns with.
 
-### 18:28 · The naturalistic set: the finding holds at 5x scale · (uncommitted)
+### 18:28 · The naturalistic set: the finding holds at 5x scale · `37ef12c`, `f9c0bdd`
 
 `results/runs/eval_traces_realistic-baseten-{single,two_slot}-retry0/`.
 
@@ -553,13 +553,57 @@ is where it can be.
 
 Baseten spend so far: about $11 of $100.
 
+### 18:41 · Factorial modes: separating the split from the rule · (uncommitted)
+
+`pinpoint/audit.py`, `pinpoint/prompt.py` (version 3), tests.
+
+**Why.** A reviewer's objection, accepted: every GroundingBench smoking gun is
+the final `submit_answer` step, and under the offense rule the only quotable
+agent actions are search queries, document ids and that answer. So "100% on
+the labelled step" might be the rule plus the benchmark's structure rather
+than better grounding. The alignment was disclosed but never measured.
+
+**What.** Two ingredients, made independent:
+
+|  | rule off | rule on |
+|---|---|---|
+| one slot | `single` (have) | `single_rule` (new) |
+| two slots | `two_slot_no_rule` (new) | `two_slot` (have) |
+
+*Split* is two named slots (where the agent did wrong; what shows it is
+wrong) versus one evidence slot. *Rule* is the instruction "quote the agent's
+own action, never what a tool returned" plus the verifier enforcing it. If
+two slots without the rule score high, the split is the general insight; if
+one slot with the rule reaches 100%, the rule does the work, and on this
+benchmark the rule is partly the answer key.
+
+**Integrity.**
+- `single` and `two_slot` are byte-for-byte unchanged, so the six runs already
+  made are valid factorial cells. `mode_fingerprint()` pins both to their
+  version-2 values in a test that must never be edited.
+- The rule sentences are copied verbatim into `single_rule`, so "the rule"
+  means identical words wherever it appears. Tests check each mode's slots and
+  rule follow exactly from its two factors, that the four cells cover the
+  factorial, and that adding the rule adds only the rule.
+- Behaviour, not just text: citing the exposing document as the first
+  citation verifies exactly in the two modes without the rule.
+- Prompt version 3 (fingerprint `9ac7b5363db3`).
+
+**Audit.** ruff, mypy `--strict` clean; **480 tests pass** (47 new). Mutation
+testing: 10 of 10 caught, including the verifier scope following the slot
+count instead of the rule, the rule paraphrased rather than verbatim, and
+either existing prompt reworded by a single phrase.
+
+**Known gap.** Verifier and audit feedback messages are model-visible but are
+not part of the prompt fingerprint, because they contain trace-specific step
+numbers. They have only ever reached a model in the forced-retry smoke test.
+
 ---
 
 ## Next
 
-- "It knew, it didn't say": analyse the saved readable reasoning of the 176
-  single-slot substitutions. No credits needed.
-- Reasoning-effort sweep on single-slot: does more thinking fix the
-  substitution? About $3.
-- Muse Spark (Meta Model API) once the card hold succeeds.
-- The demo.
+- Run the two new cells (`single_rule`, `two_slot_no_rule`) on the 120-trace
+  set, no retries. About $1.60.
+- Traces where the offense is not the final step: the generality test.
+- "It knew, it didn't say": the saved reasoning of the 176 substitutions.
+- Muse Spark once the card hold succeeds; then the demo.
