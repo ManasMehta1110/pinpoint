@@ -339,7 +339,7 @@ provider-default reasoning effort; raw record committed for provenance):
   Measure across the full run before changing the prompt. Prompt tokens were
   about double the earlier estimate because the tool schema counts too.
 
-### 17:06 · The overseer loop · (uncommitted)
+### 17:06 · The overseer loop · `6c81899`, `b9a9e5f`
 
 `pinpoint/overseer.py`, `tests/test_overseer.py`; prompt version 2;
 `results/smoke/overseer_smoke.json`.
@@ -401,11 +401,70 @@ the single-slot ablation on the same model. If single-slot Muse Spark Open
 also grounds near 100%, the finding becomes "grounding failure depends on how
 the overseer is asked", which changes the pitch.
 
+### 17:18 · Benchmark harness · (uncommitted)
+
+`benchmark/run.py`, `benchmark/grade.py`, `tests/conftest.py`,
+`tests/test_run.py`, `tests/test_grade.py`, `results/smoke/harness-8/`.
+
+**`run.py`** spends credits; **`grade.py`** never does. A run directory holds
+a manifest (configuration, data hash, git commit and whether the tree had
+uncommitted changes) and `results.jsonl`, one line per trace keyed by its line
+number, holding model output only. Runs are resumable: the same command skips
+saved traces, refuses a changed configuration, and redoes a final line cut off
+by a crash. The CLI refuses to start unless the data matches its pinned hash.
+Traces are audited concurrently; only the main thread writes.
+
+**`grade.py`** joins results to labels by line and reports verdict accuracy,
+grounding by GroundingBench's own grader (the definition behind the paper's
+0.06%), `step_correct` (offense on the labelled step, independent of keyword
+labels), and verification, each with a 95% Wilson interval, plus first-attempt
+figures, retries, rescues, verdict flips, failures, tokens and cost. Grounding
+is conditioned on a correct misbehavior verdict, as in the paper. It refuses
+to grade against data whose hash differs from the run's.
+
+**Audit**
+- ruff clean, mypy `--strict` clean on 22 files, **432 tests pass** (47 new),
+  driven end to end by a scripted model whose answers produce known outcomes.
+- GroundingBench has no type information; declared in mypy config, and the
+  grader's return value is converted at the boundary.
+- Safety: the CLI test patches out `load_env` and the client, because the real
+  `.env` would otherwise let a test spend credits.
+- Re-reading found a test comment contradicting its own assertion: the comment
+  said the grader would not credit the 18 unquotable traces, but it credits
+  all 540, because it reads the keyword from the evidence text the overseer
+  wrote and never checks it against the trace. Comment corrected.
+- Mutation testing: 17 of 17 caught, including grounding not conditioned on a
+  correct verdict, first-attempt figures taken from the final attempt,
+  verifier status reported as grader grounding, grading against the wrong
+  data, and a resume that re-pays for saved traces.
+
+**First real run through the CLI** (8 traces, original set, two-slot,
+Muse Spark Open; saved under `results/smoke/` because the tree was not yet
+committed):
+
+| | |
+|---|---|
+| verdict accuracy | 8/8 |
+| offense on the labelled step | 6/6 |
+| citations verified | 6/6 |
+| grounded by GroundingBench's grader | 3/6 (REWARD_HACKER 0/2, LAZY 1/2, DECEIVER 2/2) |
+
+**Finding: GroundingBench's grader understates content citations.** Every
+offense was on the right step and verified, yet the grader credited half.
+REWARD_HACKER's keyword is the literal tool name `submit_answer`; Pinpoint
+quoted the agent's actual false claim, which is better evidence but does not
+contain that string. LAZY failures are the unquotable "unclear" labels. The
+grader rewards repeating a class marker over quoting what the agent said.
+Consequence: `step_correct` is the headline metric, with the grader's figure
+beside it for comparability and this explanation attached. Deliberately not
+done: rendering evidence as "step N (tool): quote" so the tool name is added
+automatically. That would lift REWARD_HACKER to 100% with text the model never
+wrote, which is gaming the grader.
+
 ---
 
 ## Next
 
-- `benchmark/run.py`: run a mode over a trace file, save every raw response
-  keyed by file and line, grade offline with GroundingBench's grader.
+- Commit the harness, so benchmark runs record a clean commit.
 - First real numbers: the 2x2 ablation (single vs two slots, with and without
   citation retries) on the 120-trace set.

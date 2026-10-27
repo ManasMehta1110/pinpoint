@@ -138,6 +138,19 @@ python -m venv .venv
   citation may be an escape and must be reported, not hidden.
 - Only `ClientError` is caught; programming errors must surface.
 
+**Benchmark rules**
+- Only `benchmark/run.py` spends credits. Real runs go in `results/runs/` and
+  must start from a committed tree (the manifest records commit and
+  `dirty`). Smoke runs go in `results/smoke/`.
+- Never pass labels to the overseer: `Trace.from_dict(record)` is the only
+  way a record reaches it. `results.jsonl` holds model output only.
+- Tests must never build a real client or call `load_env()`; the real `.env`
+  holds live keys.
+- Headline metric is `step_correct`. Report GroundingBench's grader figure
+  beside it, with the reason it is lower: its REWARD_HACKER keyword is the
+  tool name `submit_answer`, so quoting the agent's actual claim earns no
+  credit. Never add text to the evidence string that the model did not write.
+
 **Prompt rules**
 - Changing any wording the model sees (system prompts, tool schemas, user
   template, retry text) requires bumping `PROMPT_VERSION` and pinning the new

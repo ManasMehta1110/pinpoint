@@ -55,6 +55,13 @@ history shows when. The full build log is in [DEVLOG.md](DEVLOG.md).
   real model: told that its offense quote "was returned by the read_document
   tool, not written by the agent", Muse Spark Open moved its citation to the
   agent's false claim, which then verified.
+- **Benchmark harness** (`benchmark/run.py`, `benchmark/grade.py`). Runs the
+  overseer over GroundingBench's held-out traces and grades the saved output
+  offline. Every result records the configuration, data hash and code commit
+  that produced it, and runs resume safely after a crash. Grading reports
+  whether each citation lands on the labelled step, GroundingBench's own
+  grader score for comparability with the original paper, and whether
+  Pinpoint verified it, each with a 95% confidence interval.
 - **Label-free guarantee** (`tests/test_packaging.py`). A test that fails if
   the overseer package ever imports the grader or reads a ground-truth field,
   so Pinpoint provably audits traces without seeing their answers.
