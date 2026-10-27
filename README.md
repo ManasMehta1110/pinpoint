@@ -129,6 +129,15 @@ reproduces every figure above offline.
 Work in progress. Each component is listed here as it lands, and the commit
 history shows when. The full build log is in [DEVLOG.md](DEVLOG.md).
 
+- **Demo app** (`app/`). Three views: **Compare** puts a single-citation
+  overseer and Pinpoint side by side on real traces, highlighting exactly
+  what each cited, with the single-citation model's own reasoning quoted;
+  **Audit live** runs Pinpoint on any trace with Muse Spark Open; **Try to
+  fool the verifier** checks any citation you type. Every audit in Compare is
+  a saved model output, and the gallery build fails if an example does not
+  show what its title claims. Run it with `pip install -e ".[app]"` and
+  `python -m app.server`.
+
 - **Verified evaluation data** (`benchmark/fetch_data.py`). Fetches
   GroundingBench's 720 held-out traces from a pinned commit and accepts each
   file only after a SHA-256 check and a trace-count check. Downloads are

@@ -1,0 +1,278 @@
+"""The demo's API, and the page that uses it.
+
+Three things a visitor can do:
+
+* browse the gallery: real saved audits, served as a static file;
+* ``POST /api/verify``: check any citation against a trace with Pinpoint's
+  verifier. No model call, so it is free and unlimited apart from size;
+* ``POST /api/audit``: run Pinpoint live on Muse Spark Open. Each audit costs
+  about $0.007, so live audits are capped: a daily total for everyone, an
+  hourly number per visitor, and a few at a time.
+
+The caps live in memory, so a restart resets them. They are a guard against
+an accidental bill, not a security boundary: the per-visitor cap trusts the
+first X-Forwarded-For address, which a determined client can vary. The daily
+cap holds regardless.
+
+Run locally:
+    python -m app.server            # http://127.0.0.1:7860, reads .env
+"""
+
+from __future__ import annotations
+
+import os
+import threading
+import time
+from collections import defaultdict, deque
+from collections.abc import Callable
+from dataclasses import dataclass
+from datetime import UTC, datetime
+from pathlib import Path
+from typing import Any, Literal
+
+from fastapi import FastAPI, HTTPException, Request
+from fastapi.responses import FileResponse, JSONResponse, Response
+from fastapi.staticfiles import StaticFiles
+from pydantic import BaseModel
+
+from app.views import audit_view, trace_view
+from pinpoint.client import PROVIDERS, ClientError, ModelClient
+from pinpoint.overseer import Overseer, OverseerResult
+from pinpoint.prompt import PROMPT_VERSION
+from pinpoint.trace import Trace, TraceError
+from pinpoint.verifier import Citation, verify
+
+STATIC_DIR = Path(__file__).resolve().parent / "static"
+PROVIDER = PROVIDERS["baseten"]
+# USD per million tokens, (input, output); used only for the cost shown.
+PRICE = (1.25, 4.25)
+
+MAX_BODY_BYTES = 64_000
+MAX_STEPS = 30
+MAX_RENDERED_CHARS = 24_000
+
+# The verifier's step and quote checks are the same for every misbehavior
+# class; the verify endpoint needs some misbehavior verdict to run them.
+_ANY_MISBEHAVIOR = "DECEIVER"
+
+
+@dataclass(frozen=True)
+class Limits:
+    daily_cap: int = 300
+    per_visitor_per_hour: int = 10
+    max_concurrent: int = 4
+
+
+class Budget:
+    """Who may start a live audit now. Thread-safe; counts only granted audits."""
+
+    def __init__(self, limits: Limits, clock: Callable[[], float] = time.time) -> None:
+        self.limits = limits
+        self._clock = clock
+        self._lock = threading.Lock()
+        self._day = ""
+        self._used_today = 0
+        self._recent: defaultdict[str, deque[float]] = defaultdict(deque)
+
+    def _roll(self, now: float) -> None:
+        day = datetime.fromtimestamp(now, UTC).date().isoformat()
+        if day != self._day:
+            self._day, self._used_today = day, 0
+
+    def remaining_today(self) -> int:
+        with self._lock:
+            self._roll(self._clock())
+            return max(0, self.limits.daily_cap - self._used_today)
+
+    def try_acquire(self, visitor: str) -> str | None:
+        """Grant one audit, or return why not."""
+        with self._lock:
+            now = self._clock()
+            self._roll(now)
+            recent = self._recent[visitor]
+            while recent and now - recent[0] >= 3600:
+                recent.popleft()
+            if self._used_today >= self.limits.daily_cap:
+                return "Today's live audits are used up. The gallery and verifier still work."
+            if len(recent) >= self.limits.per_visitor_per_hour:
+                return "You have run the hourly maximum of live audits. Try again later."
+            recent.append(now)
+            self._used_today += 1
+            return None
+
+
+class VerifyRequest(BaseModel):
+    trace: dict[str, Any]
+    slot: Literal["offense", "contradicted_by"]
+    step: Any = None
+    quote: Any = None
+
+
+class AuditRequest(BaseModel):
+    trace: dict[str, Any]
+
+
+def parse_trace(raw: dict[str, Any]) -> Trace:
+    """A trace from the request, or a 400 saying what is wrong with it."""
+    try:
+        trace = Trace.from_dict(raw)
+    except TraceError as exc:
+        raise HTTPException(400, f"Not a valid trace: {exc}") from None
+    if not trace.steps:
+        raise HTTPException(400, "The trace has no steps.")
+    if len(trace.steps) > MAX_STEPS:
+        raise HTTPException(400, f"Traces are limited to {MAX_STEPS} steps here.")
+    if len(trace.render()) > MAX_RENDERED_CHARS:
+        raise HTTPException(400, f"Traces are limited to {MAX_RENDERED_CHARS:,} characters here.")
+    return trace
+
+
+def visitor_of(request: Request) -> str:
+    forwarded = request.headers.get("x-forwarded-for", "")
+    first = forwarded.split(",")[0].strip()
+    if first:
+        return first
+    return request.client.host if request.client else "unknown"
+
+
+def _cost(result: OverseerResult) -> tuple[int, int, float]:
+    tokens_in = tokens_out = 0
+    for attempt in result.attempts:
+        if attempt.completion is not None:
+            usage = attempt.completion.usage or {}
+            tokens_in += int(usage.get("prompt_tokens") or 0)
+            tokens_out += int(usage.get("completion_tokens") or 0)
+    return tokens_in, tokens_out, (tokens_in * PRICE[0] + tokens_out * PRICE[1]) / 1e6
+
+
+def audit_response(trace: Trace, result: OverseerResult) -> dict[str, Any]:
+    """What the page needs from one live audit. Never includes provider errors."""
+    final = result.final
+    audit = None if final is None or final.audit is None else final.audit.to_dict()
+    check = None if final is None or final.verification is None else final.verification.to_dict()
+    completion = None if final is None else final.completion
+    tokens_in, tokens_out, cost = _cost(result)
+    return {
+        "status": result.status,
+        "trace": trace_view(trace),
+        "pinpoint": audit_view(trace, audit, check, result.mode),
+        "reasoning": None if completion is None else completion.reasoning,
+        "attempts": len(result.attempts),
+        "citation_retries": result.citation_retries,
+        "verdict_history": [str(v) for v in result.verdict_history],
+        "latency_s": round(
+            sum(a.completion.latency_s for a in result.attempts if a.completion is not None), 1
+        ),
+        "tokens": {"in": tokens_in, "out": tokens_out},
+        "cost_usd": round(cost, 5),
+        "model": PROVIDER.model,
+        "prompt_version": PROMPT_VERSION,
+    }
+
+
+def create_app(
+    overseer: Overseer | None,
+    limits: Limits | None = None,
+    clock: Callable[[], float] = time.time,
+) -> FastAPI:
+    """The app. ``overseer`` is ``None`` when no API key is configured: the
+    gallery and verifier still work, and live audits say they are off."""
+    limits = limits or Limits()
+    budget = Budget(limits, clock)
+    slots = threading.BoundedSemaphore(limits.max_concurrent)
+    app = FastAPI(title="Pinpoint", docs_url=None, redoc_url=None, openapi_url=None)
+
+    @app.middleware("http")
+    async def limit_body(request: Request, call_next: Any) -> Response:
+        length = request.headers.get("content-length")
+        if length is not None and (not length.isdigit() or int(length) > MAX_BODY_BYTES):
+            return JSONResponse({"detail": "Request too large."}, status_code=413)
+        response: Response = await call_next(request)
+        return response
+
+    @app.get("/")
+    def index() -> FileResponse:
+        return FileResponse(STATIC_DIR / "index.html")
+
+    @app.get("/api/status")
+    def status() -> dict[str, Any]:
+        return {
+            "live": overseer is not None,
+            "remaining_today": budget.remaining_today() if overseer is not None else 0,
+            "model": PROVIDER.model,
+            "prompt_version": PROMPT_VERSION,
+        }
+
+    @app.post("/api/verify")
+    def verify_citation(body: VerifyRequest) -> dict[str, Any]:
+        trace = parse_trace(body.trace)
+        scope: Literal["step", "action"] = "action" if body.slot == "offense" else "step"
+        result = verify(trace, Citation(_ANY_MISBEHAVIOR, body.step, body.quote), scope=scope)
+        audit = {"verdict": _ANY_MISBEHAVIOR, body.slot: {"step": body.step, "quote": body.quote}}
+        check = {"status": result.status, body.slot: result.to_dict()}
+        view = audit_view(trace, audit, check, "two_slot") or {}
+        return {
+            "status": result.status,
+            "issues": [issue.message for issue in result.issues],
+            "found_in_steps": list(result.found_in_steps),
+            "found_in_results": list(result.found_in_results),
+            "span": (view.get(body.slot) or {}).get("span"),
+        }
+
+    @app.post("/api/audit")
+    def live_audit(body: AuditRequest, request: Request) -> dict[str, Any]:
+        trace = parse_trace(body.trace)
+        if overseer is None:
+            raise HTTPException(503, "Live audits are off on this server.")
+        if not slots.acquire(blocking=False):
+            raise HTTPException(503, "Busy with other audits. Try again in a minute.")
+        try:
+            refusal = budget.try_acquire(visitor_of(request))
+            if refusal is not None:
+                raise HTTPException(429, refusal)
+            result = overseer.audit(trace)
+        finally:
+            slots.release()
+        response = audit_response(trace, result)
+        response["remaining_today"] = budget.remaining_today()
+        return response
+
+    app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
+    return app
+
+
+def default_overseer() -> Overseer | None:
+    """Pinpoint on Muse Spark Open, or ``None`` if no key is configured.
+
+    Shorter timeout and fewer retries than the benchmark: a visitor is
+    waiting, so a stuck call should fail in about three minutes at worst.
+    """
+    try:
+        client = ModelClient(PROVIDER, timeout_s=90, max_retries=1)
+    except ClientError:
+        return None
+    return Overseer(client, mode="two_slot")
+
+
+def _limits_from_env() -> Limits:
+    return Limits(
+        daily_cap=int(os.environ.get("PINPOINT_DAILY_CAP", "300")),
+        per_visitor_per_hour=int(os.environ.get("PINPOINT_PER_VISITOR_PER_HOUR", "10")),
+        max_concurrent=int(os.environ.get("PINPOINT_MAX_CONCURRENT", "4")),
+    )
+
+
+def main() -> None:  # pragma: no cover - entry point
+    import uvicorn
+
+    from pinpoint.client import load_env
+
+    load_env()
+    app = create_app(default_overseer(), _limits_from_env())
+    uvicorn.run(
+        app, host=os.environ.get("HOST", "127.0.0.1"), port=int(os.environ.get("PORT", "7860"))
+    )
+
+
+if __name__ == "__main__":  # pragma: no cover
+    main()

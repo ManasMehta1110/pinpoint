@@ -68,7 +68,7 @@ benchmark/       evaluation harness; may use GroundingBench labels + grader
 tests/           pytest suite
 data/            fetched traces (gitignored; run benchmark/fetch_data.py)
 results/         saved runs, raw model output per trace (committed)
-app/             demo web app (not started)
+app/             demo web app: server.py (API, caps), static/ (page, gallery)
 ```
 
 ## Commands
@@ -83,7 +83,24 @@ python -m venv .venv
 ./.venv/Scripts/python -m pytest -q
 ./.venv/Scripts/python -m ruff check . && ./.venv/Scripts/python -m ruff format --check .
 ./.venv/Scripts/python -m mypy
+
+./.venv/Scripts/python -m pip install -e ".[app]"
+./.venv/Scripts/python -m app.server               # demo at http://127.0.0.1:7860
+./.venv/Scripts/python -m app.examples             # rebuild the gallery JSON
 ```
+
+**Demo app (`app/`, DEVLOG 20:31)**
+- Every audit in the gallery is a saved output. Rebuild with
+  `python -m app.examples`; never edit `examples.json` by hand (a test
+  compares it with the builder's output). Blurbs must state only what is in
+  the trace: check each against the trace text.
+- Reasoning excerpts are hand-picked and must be verbatim in the saved
+  reasoning; the build fails otherwise.
+- Only verified citations are highlighted. Page text from traces goes into
+  the DOM via `textContent` only: live traces are visitor input.
+- Live audits cost money: keep the caps (`PINPOINT_DAILY_CAP` etc.). Tests
+  build the app with `create_app(overseer, ...)` and a scripted model, never
+  `default_overseer()` with a key.
 
 ## Facts that are easy to get wrong
 

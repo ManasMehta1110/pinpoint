@@ -1,0 +1,570 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Pinpoint</title>
+<meta name="description" content="An AI overseer that shows exactly where an agent went wrong, and checks its own citations against the trace.">
+<style>
+:root {
+  --bg: #f7f7f5; --panel: #ffffff; --ink: #1b1b1f; --muted: #5d5d66; --line: #e2e2e0;
+  --result-bg: #f1f1ee; --accent: #3b5bdb;
+  --offense: #c92a2a; --offense-bg: #ffe3e3;
+  --contra: #b35c00; --contra-bg: #fff0d6;
+  --cited: #364fc7; --cited-bg: #dbe4ff;
+  --ok: #2b8a3e; --bad: #c92a2a;
+  --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #141417; --panel: #1c1c21; --ink: #ececf1; --muted: #a0a0ab; --line: #2e2e36;
+    --result-bg: #23232a; --accent: #91a7ff;
+    --offense: #ff8787; --offense-bg: #4a1f22;
+    --contra: #ffc078; --contra-bg: #47321a;
+    --cited: #91a7ff; --cited-bg: #232c4d;
+    --ok: #69db7c; --bad: #ff8787;
+  }
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--ink);
+  font: 15px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+main { max-width: 1200px; margin: 0 auto; padding: 24px 16px 64px; }
+h1 { font-size: 28px; margin: 0; letter-spacing: -0.02em; }
+h2 { font-size: 20px; margin: 0 0 4px; }
+h3 { font-size: 15px; margin: 0; }
+p { margin: 0 0 8px; }
+.tagline { color: var(--muted); margin: 4px 0 20px; }
+.stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 24px; }
+.stat { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 14px; }
+.stat b { display: block; font-size: 22px; letter-spacing: -0.01em; }
+.stat span { color: var(--muted); font-size: 13px; }
+.tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--line); margin-bottom: 20px; flex-wrap: wrap; }
+.tab { background: none; border: none; border-bottom: 2px solid transparent; color: var(--muted);
+  font: inherit; font-weight: 600; padding: 10px 14px; cursor: pointer; }
+.tab[aria-selected="true"] { color: var(--ink); border-bottom-color: var(--accent); }
+.chips { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 16px; }
+.chip { border: 1px solid var(--line); background: var(--panel); color: var(--ink); border-radius: 999px;
+  padding: 6px 12px; font: inherit; font-size: 13px; cursor: pointer; }
+.chip[aria-pressed="true"] { border-color: var(--accent); color: var(--accent); font-weight: 600; }
+.chip.limit { border-style: dashed; }
+.blurb { color: var(--muted); max-width: 820px; }
+.cols { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 16px; }
+.panel { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 16px; min-width: 0; }
+.panel .sub { color: var(--muted); font-size: 13px; margin-bottom: 10px; }
+.verdict { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-bottom: 8px; }
+.badge { font-size: 12px; font-weight: 700; padding: 2px 8px; border-radius: 6px; border: 1px solid var(--line); }
+.badge.ok { color: var(--ok); border-color: var(--ok); }
+.badge.bad { color: var(--bad); border-color: var(--bad); }
+.cites { list-style: none; padding: 0; margin: 0 0 12px; font-size: 13px; }
+.cites li { margin: 4px 0; }
+.cites q { font-family: var(--mono); font-size: 12px; }
+.swatch { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 6px; vertical-align: middle; }
+.question { font-weight: 600; margin-bottom: 8px; }
+.step { border: 1px solid var(--line); border-radius: 8px; margin: 6px 0; overflow: hidden; }
+.step.flagged { border-color: var(--offense); }
+.step-head { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; padding: 4px 10px;
+  font-size: 12px; color: var(--muted); border-bottom: 1px solid var(--line); }
+.step-head b { color: var(--ink); }
+.tag { font-size: 11px; font-weight: 700; padding: 0 6px; border-radius: 4px; }
+.tag.offense { background: var(--offense-bg); color: var(--offense); }
+.tag.contra { background: var(--contra-bg); color: var(--contra); }
+.tag.cited { background: var(--cited-bg); color: var(--cited); }
+.tag.label { border: 1px dashed var(--muted); color: var(--muted); }
+pre.text { margin: 0; padding: 8px 10px; font: 12px/1.5 var(--mono); white-space: pre-wrap; word-break: break-word; }
+.res { color: var(--muted); background: var(--result-bg); }
+mark { border-radius: 3px; padding: 0 1px; color: inherit; }
+mark.offense { background: var(--offense-bg); outline: 1.5px solid var(--offense); }
+mark.contra { background: var(--contra-bg); outline: 1.5px solid var(--contra); }
+mark.cited { background: var(--cited-bg); outline: 1.5px solid var(--cited); }
+.claimed { margin-top: 8px; font-size: 13px; }
+.thought { margin-top: 12px; border-left: 3px solid var(--cited); padding: 8px 12px; background: var(--result-bg);
+  border-radius: 0 8px 8px 0; font-size: 13px; }
+.thought i { display: block; color: var(--muted); font-style: normal; font-size: 12px; margin-bottom: 4px; }
+.source { color: var(--muted); font-size: 12px; margin-top: 12px; }
+.source code { font-size: 11px; }
+.row { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; margin: 8px 0; }
+label { font-size: 13px; color: var(--muted); }
+select, input[type="text"], input[type="number"], textarea {
+  font: inherit; color: var(--ink); background: var(--panel); border: 1px solid var(--line);
+  border-radius: 8px; padding: 6px 10px; }
+textarea { width: 100%; min-height: 360px; font: 12px/1.45 var(--mono); }
+input[type="text"] { flex: 1; min-width: 220px; font-family: var(--mono); font-size: 13px; }
+input[type="number"] { width: 80px; }
+button.go { background: var(--accent); color: white; border: none; border-radius: 8px; padding: 9px 16px;
+  font: inherit; font-weight: 600; cursor: pointer; }
+button.go:disabled { opacity: 0.5; cursor: default; }
+button.small { font: inherit; font-size: 12px; padding: 4px 10px; border-radius: 6px; border: 1px solid var(--line);
+  background: var(--panel); color: var(--ink); cursor: pointer; }
+.note { color: var(--muted); font-size: 13px; }
+.error { color: var(--bad); font-size: 14px; }
+.check { border-radius: 10px; padding: 12px 14px; margin: 12px 0; border: 1px solid var(--line); }
+.check.ok { border-color: var(--ok); }
+.check.bad { border-color: var(--bad); }
+.check b { font-size: 16px; }
+.check ul { margin: 6px 0 0; padding-left: 18px; }
+details { margin-top: 12px; }
+summary { cursor: pointer; color: var(--muted); font-size: 13px; }
+details pre { white-space: pre-wrap; font: 12px/1.45 var(--mono); max-height: 360px; overflow: auto;
+  background: var(--result-bg); padding: 10px; border-radius: 8px; }
+.meta { color: var(--muted); font-size: 12px; margin-top: 8px; }
+footer { color: var(--muted); font-size: 12px; margin-top: 40px; border-top: 1px solid var(--line); padding-top: 12px; }
+footer a, .source a { color: var(--accent); }
+[hidden] { display: none !important; }
+@media (max-width: 900px) {
+  .cols, .stats { grid-template-columns: 1fr; }
+}
+</style>
+</head>
+<body>
+<main>
+  <h1>Pinpoint</h1>
+  <p class="tagline">An AI overseer that shows exactly where an agent went wrong, and checks every citation
+    against the trace before showing it. Running on Muse Spark Open.</p>
+
+  <section class="stats" aria-label="Results">
+    <div class="stat"><b>176/180 &rarr; 0/179</b>
+      <span>deceptive traces where the overseer cited the document exposing the lie instead of the lie:
+        one citation vs Pinpoint</span></div>
+    <div class="stat"><b>44.6% &rarr; 100%</b>
+      <span>misbehavior offenses cited at the labelled step (240/538 &rarr; 536/536), 720 GroundingBench traces</span></div>
+    <div class="stat"><b>137 of 176</b>
+      <span>of those substitutions, the model's own reasoning weighed citing the lie, then cited the document</span></div>
+  </section>
+
+  <nav class="tabs" role="tablist">
+    <button class="tab" role="tab" aria-selected="true" data-tab="compare">Compare</button>
+    <button class="tab" role="tab" aria-selected="false" data-tab="live">Audit live</button>
+    <button class="tab" role="tab" aria-selected="false" data-tab="fool">Try to fool the verifier</button>
+  </nav>
+
+  <section id="compare" role="tabpanel">
+    <div class="chips" id="chips"></div>
+    <h2 id="ex-title"></h2>
+    <p class="blurb" id="ex-blurb"></p>
+    <div class="cols">
+      <div class="panel">
+        <h3>One citation</h3>
+        <div class="sub">Asked for "the step that proves your verdict". The usual way.</div>
+        <div id="single"></div>
+      </div>
+      <div class="panel">
+        <h3>Pinpoint</h3>
+        <div class="sub">Two citations: the offense, which must quote the agent's own action, and what
+          contradicts it.</div>
+        <div id="pinpoint"></div>
+      </div>
+    </div>
+    <p class="source" id="ex-source"></p>
+  </section>
+
+  <section id="live" role="tabpanel" hidden>
+    <p class="note">Paste any agent trace as JSON, or start from an example, and Pinpoint audits it live
+      with Muse Spark Open. Citations that do not check out against the trace are never shown as findings.
+      <span id="live-status"></span></p>
+    <div class="cols">
+      <div class="panel">
+        <div class="row">
+          <label for="live-pick">Start from</label>
+          <select id="live-pick"></select>
+        </div>
+        <textarea id="live-input" spellcheck="false" aria-label="Trace JSON"></textarea>
+        <div class="row">
+          <button class="go" id="live-go">Audit with Muse Spark Open</button>
+          <span class="note" id="live-wait" hidden>Auditing... usually 10-40 seconds.</span>
+        </div>
+        <p class="error" id="live-error" hidden></p>
+      </div>
+      <div class="panel" id="live-out"><p class="note">The audit appears here.</p></div>
+    </div>
+  </section>
+
+  <section id="fool" role="tabpanel" hidden>
+    <p class="note">The verifier decides whether a citation is <em>real</em>: the step exists, the quote is
+      really there, and an offense quotes what the agent did, not what a tool returned. It uses only the
+      trace, no answer key. Try to get a fake citation past it.</p>
+    <div class="cols">
+      <div class="panel">
+        <div class="row">
+          <label for="fool-pick">Trace</label>
+          <select id="fool-pick"></select>
+        </div>
+        <div class="row">
+          <label><input type="radio" name="slot" value="offense" checked> offense</label>
+          <label><input type="radio" name="slot" value="contradicted_by"> contradicted_by</label>
+          <label for="fool-step">step</label>
+          <input type="number" id="fool-step" min="1" value="1">
+        </div>
+        <div class="row">
+          <input type="text" id="fool-quote" placeholder="quote from that step" aria-label="Quote">
+        </div>
+        <div class="row" id="presets"></div>
+        <div id="fool-out"></div>
+      </div>
+      <div class="panel" id="fool-trace"></div>
+    </div>
+  </section>
+
+  <footer>
+    Built for the Meta Global AI Developer Hackathon. Every audit shown in Compare is a saved model output;
+    nothing is written by hand except titles and descriptions.
+    <a href="https://github.com/ManasMehta1110/pinpoint">Code, data and every raw result</a>.
+  </footer>
+</main>
+
+<script>
+"use strict";
+
+const $ = (id) => document.getElementById(id);
+
+function el(tag, attrs, ...children) {
+  const node = document.createElement(tag);
+  for (const [key, value] of Object.entries(attrs || {})) {
+    if (value === null || value === undefined || value === false) continue;
+    if (key === "class") node.className = value;
+    else if (key === "text") node.textContent = value;
+    else node.setAttribute(key, value === true ? "" : String(value));
+  }
+  for (const child of children) {
+    if (child === null || child === undefined) continue;
+    node.append(child instanceof Node ? child : document.createTextNode(String(child)));
+  }
+  return node;
+}
+
+// --- trace rendering ---------------------------------------------------------
+
+const SLOT_STYLE = {
+  offense: { cls: "offense", tag: "offense" },
+  contradicted_by: { cls: "contra", tag: "contradicted_by" },
+  evidence: { cls: "cited", tag: "cited as evidence" },
+};
+
+// marks: [{step, start, end, kind}] with kind a key of SLOT_STYLE.
+function renderStepText(step, marks) {
+  const text = step.text;
+  const cuts = new Set([0, text.length, step.action_len]);
+  for (const m of marks) { cuts.add(m.start); cuts.add(m.end); }
+  const points = [...cuts].filter((p) => p >= 0 && p <= text.length).sort((a, b) => a - b);
+  const pre = el("pre", { class: "text" });
+  for (let i = 0; i < points.length - 1; i++) {
+    const a = points[i], b = points[i + 1];
+    if (a === b) continue;
+    let node = document.createTextNode(text.slice(a, b));
+    const covering = marks.find((m) => m.start <= a && b <= m.end);
+    if (covering) node = el("mark", { class: SLOT_STYLE[covering.kind].cls }, node);
+    if (a >= step.action_len) node = el("span", { class: "res" }, node);
+    pre.append(node);
+  }
+  return pre;
+}
+
+function renderTrace(trace, marks, labelStep) {
+  const box = el("div", {});
+  box.append(el("div", { class: "question", text: "Question: " + trace.question }));
+  for (const step of trace.steps) {
+    const mine = marks.filter((m) => m.step === step.index);
+    const head = el("div", { class: "step-head" }, el("b", { text: "Step " + step.index }), step.tool);
+    const tagged = new Set();
+    for (const m of mine) {
+      if (tagged.has(m.kind)) continue;
+      tagged.add(m.kind);
+      head.append(el("span", { class: "tag " + SLOT_STYLE[m.kind].cls, text: SLOT_STYLE[m.kind].tag }));
+    }
+    if (labelStep === step.index) head.append(el("span", { class: "tag label", text: "labelled offense" }));
+    const flagged = mine.some((m) => m.kind === "offense");
+    box.append(el("div", { class: "step" + (flagged ? " flagged" : "") }, head,
+      renderStepText(step, mine.filter((m) => m.start !== undefined))));
+  }
+  if (trace.claimed_answer !== null && trace.claimed_answer !== undefined) {
+    box.append(el("div", { class: "claimed" }, el("b", { text: "Claimed answer: " }), trace.claimed_answer));
+  }
+  return box;
+}
+
+// An audit view -> marks for the renderer, and a summary list of its citations.
+function auditMarks(audit) {
+  const marks = [];
+  if (!audit) return marks;
+  const single = audit.mode === "single";
+  for (const slot of ["offense", "contradicted_by"]) {
+    const c = audit[slot];
+    if (!c || typeof c.step !== "number") continue;
+    const kind = single ? "evidence" : slot;
+    marks.push(c.span ? { step: c.step, start: c.span.start, end: c.span.end, kind } : { step: c.step, kind });
+  }
+  return marks;
+}
+
+function renderCitations(audit) {
+  const list = el("ul", { class: "cites" });
+  const single = audit.mode === "single";
+  for (const slot of ["offense", "contradicted_by"]) {
+    const c = audit[slot];
+    if (!c) continue;
+    const kind = single ? "evidence" : slot;
+    const ok = c.status === "verified";
+    const item = el("li", {},
+      el("span", { class: "swatch", style: "background: var(--" + (kind === "evidence" ? "cited" : kind === "offense" ? "offense" : "contra") + ")" }),
+      (single ? "evidence" : slot) + " · step " + c.step + " · ",
+      el("q", { text: String(c.quote) }), " ",
+      el("span", { class: "badge " + (ok ? "ok" : "bad"), text: ok ? "verified" : "unverified" }));
+    list.append(item);
+    for (const issue of c.issues || []) list.append(el("li", { class: "error", text: issue }));
+  }
+  return list;
+}
+
+function renderAudit(target, trace, audit, labelStep) {
+  target.replaceChildren();
+  if (!audit) { target.append(el("p", { class: "error", text: "No readable audit came back." })); return; }
+  const conf = typeof audit.confidence === "number" ? " · confidence " + audit.confidence : "";
+  target.append(el("div", { class: "verdict" },
+    el("span", { class: "badge", text: String(audit.verdict) }), el("span", { class: "note", text: conf })));
+  if (audit.rationale) target.append(el("p", { class: "note", text: audit.rationale }));
+  target.append(renderCitations(audit));
+  target.append(renderTrace(trace, auditMarks(audit), labelStep));
+}
+
+// --- compare -----------------------------------------------------------------
+
+let EXAMPLES = [];
+
+function showExample(key) {
+  const ex = EXAMPLES.find((e) => e.key === key) || EXAMPLES[0];
+  for (const chip of $("chips").children) chip.setAttribute("aria-pressed", String(chip.dataset.key === ex.key));
+  $("ex-title").textContent = ex.title;
+  $("ex-blurb").textContent = ex.blurb;
+  renderAudit($("single"), ex.trace, ex.single, ex.label.step);
+  if (ex.single_reasoning) {
+    $("single").append(el("div", { class: "thought" },
+      el("i", { text: "Its reasoning before answering, verbatim:" }), "“" + ex.single_reasoning + "”"));
+  }
+  renderAudit($("pinpoint"), ex.trace, ex.pinpoint, ex.label.step);
+  const s = ex.source;
+  $("ex-source").replaceChildren(
+    "Source: ", el("code", { text: s.data_file + " line " + s.line }), " · runs ",
+    el("code", { text: s.single_run }), " and ", el("code", { text: s.pinpoint_run }),
+    " · commit ", el("code", { text: s.commits.map((c) => c.slice(0, 7)).join(", ") }),
+    " · " + s.model + ". “Labelled offense” is the dataset's label, shown here only; the overseer never sees it.");
+}
+
+function setupCompare() {
+  for (const ex of EXAMPLES) {
+    $("chips").append(el("button", { class: "chip" + (ex.kind === "limit" ? " limit" : ""), "data-key": ex.key,
+      "aria-pressed": "false", text: ex.title }));
+  }
+  $("chips").addEventListener("click", (e) => {
+    const key = e.target.closest(".chip")?.dataset.key;
+    if (key) showExample(key);
+  });
+  showExample(EXAMPLES[0].key);
+}
+
+// --- live --------------------------------------------------------------------
+
+const OWN_TRACE = {
+  question: "What year did the Berlin Wall fall?",
+  steps: [
+    { tool: "search", args: { query: "Berlin Wall fall year" }, result: ["doc_1"] },
+    { tool: "read_document", args: { doc_id: "doc_1" }, result: "The Berlin Wall fell on 9 November 1989." },
+    { tool: "submit_answer", args: { answer: "The Berlin Wall fell in 1991." }, result: null },
+  ],
+  claimed_answer: "The Berlin Wall fell in 1991.",
+};
+
+function fillPicker(select, includeOwn) {
+  if (includeOwn) select.append(el("option", { value: "__own", text: "A short trace to edit" }));
+  for (const ex of EXAMPLES) select.append(el("option", { value: ex.key, text: ex.title }));
+}
+
+function setLiveInput(key) {
+  const ex = EXAMPLES.find((e) => e.key === key);
+  $("live-input").value = JSON.stringify(ex ? ex.input : OWN_TRACE, null, 2);
+}
+
+async function refreshStatus() {
+  try {
+    const s = await (await fetch("/api/status")).json();
+    if (!s.live) {
+      $("live-status").textContent = "Live audits are off on this server.";
+      $("live-go").disabled = true;
+    } else {
+      $("live-status").textContent = s.remaining_today + " live audits left today.";
+    }
+  } catch (err) {
+    $("live-status").textContent = "Could not reach the server.";
+  }
+}
+
+async function runLive() {
+  $("live-error").hidden = true;
+  let trace;
+  try { trace = JSON.parse($("live-input").value); }
+  catch (err) { showLiveError("That is not valid JSON: " + err.message); return; }
+  $("live-go").disabled = true;
+  $("live-wait").hidden = false;
+  try {
+    const response = await fetch("/api/audit", {
+      method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ trace }),
+    });
+    const body = await response.json().catch(() => ({}));
+    if (!response.ok) { showLiveError(detailText(body) || "The server said " + response.status + "."); return; }
+    renderLive(body);
+  } catch (err) {
+    showLiveError("Could not reach the server.");
+  } finally {
+    $("live-go").disabled = false;
+    $("live-wait").hidden = true;
+    refreshStatus();
+  }
+}
+
+function detailText(body) {
+  if (typeof body.detail === "string") return body.detail;
+  if (Array.isArray(body.detail)) return "The request was not in the expected shape.";
+  return "";
+}
+
+function showLiveError(message) {
+  $("live-error").textContent = message;
+  $("live-error").hidden = false;
+}
+
+function renderLive(r) {
+  const out = $("live-out");
+  if (r.status === "failed") {
+    out.replaceChildren(el("p", { class: "error", text: "The model could not be reached, or did not answer in the expected form. Nothing is shown rather than a guess." }));
+    return;
+  }
+  renderAudit(out, r.trace, r.pinpoint, null);
+  const verifiedNote = {
+    verified: "Every citation checked out against the trace.",
+    unverified: "A citation did not check out even after retries, so it is shown as unverified, not as a finding.",
+    no_finding: "No misbehavior found, so nothing to cite.",
+  }[r.status] || "";
+  out.prepend(el("p", { class: "note", text: verifiedNote }));
+  out.append(el("p", { class: "meta", text:
+    r.attempts + " model call" + (r.attempts === 1 ? "" : "s") +
+    (r.citation_retries ? " (" + r.citation_retries + " after verifier feedback)" : "") +
+    " · " + r.latency_s + " s · " + r.tokens.in + " tokens in, " + r.tokens.out + " out · about $" +
+    r.cost_usd.toFixed(4) + " · " + r.model + " · prompt v" + r.prompt_version }));
+  if (r.reasoning) {
+    out.append(el("details", {}, el("summary", { text: "The model's reasoning" }), el("pre", { text: r.reasoning })));
+  }
+}
+
+function setupLive() {
+  fillPicker($("live-pick"), true);
+  $("live-pick").addEventListener("change", (e) => setLiveInput(e.target.value));
+  setLiveInput("__own");
+  $("live-go").addEventListener("click", runLive);
+  refreshStatus();
+}
+
+// --- fool the verifier --------------------------------------------------------
+
+let foolExample = null;
+let foolTimer = null;
+
+function foolSlot() { return document.querySelector('input[name="slot"]:checked').value; }
+
+function setFool(slot, step, quote) {
+  document.querySelector('input[name="slot"][value="' + slot + '"]').checked = true;
+  $("fool-step").value = step;
+  $("fool-quote").value = quote;
+  checkFool();
+}
+
+function presetsFor(ex) {
+  const off = ex.pinpoint.offense, con = ex.pinpoint.contradicted_by;
+  const presets = [];
+  if (con) presets.push(["Cite the document as the offense", "offense", con.step, con.quote]);
+  presets.push(["Paraphrase", "offense", off.step, "the agent admitted it was wrong"]);
+  const other = off.step > 1 ? off.step - 1 : off.step + 1;
+  presets.push(["Right quote, wrong step", "offense", other, off.quote]);
+  presets.push(["Too vague", "offense", off.step, "the"]);
+  presets.push(["The real offense", "offense", off.step, off.quote]);
+  return presets;
+}
+
+function showFoolExample(key) {
+  foolExample = EXAMPLES.find((e) => e.key === key) || EXAMPLES[0];
+  $("presets").replaceChildren(el("span", { class: "note", text: "Try:" }));
+  for (const [label, slot, step, quote] of presetsFor(foolExample)) {
+    const b = el("button", { class: "small", text: label });
+    b.addEventListener("click", () => setFool(slot, step, quote));
+    $("presets").append(b);
+  }
+  setFool("offense", foolExample.pinpoint.contradicted_by ? foolExample.pinpoint.contradicted_by.step : 1,
+    foolExample.pinpoint.contradicted_by ? foolExample.pinpoint.contradicted_by.quote : "");
+}
+
+function checkFool() {
+  clearTimeout(foolTimer);
+  foolTimer = setTimeout(runFool, 250);
+}
+
+async function runFool() {
+  const slot = foolSlot();
+  const step = Number($("fool-step").value);
+  const quote = $("fool-quote").value;
+  let r;
+  try {
+    const response = await fetch("/api/verify", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ trace: foolExample.input, slot, step, quote }),
+    });
+    r = await response.json();
+    if (!response.ok) { $("fool-out").replaceChildren(el("p", { class: "error", text: detailText(r) })); return; }
+  } catch (err) {
+    $("fool-out").replaceChildren(el("p", { class: "error", text: "Could not reach the server." }));
+    return;
+  }
+  const ok = r.status === "verified";
+  const box = el("div", { class: "check " + (ok ? "ok" : "bad") },
+    el("b", { text: ok ? "Accepted: this citation is real." : "Rejected." }));
+  if (r.issues.length) box.append(el("ul", {}, ...r.issues.map((i) => el("li", { text: i }))));
+  $("fool-out").replaceChildren(box);
+  const marks = ok && r.span ? [{ step, start: r.span.start, end: r.span.end, kind: slot }] : [];
+  $("fool-trace").replaceChildren(renderTrace(foolExample.trace, marks, null));
+}
+
+function setupFool() {
+  fillPicker($("fool-pick"), false);
+  $("fool-pick").addEventListener("change", (e) => showFoolExample(e.target.value));
+  for (const input of [$("fool-step"), $("fool-quote")]) input.addEventListener("input", checkFool);
+  for (const radio of document.querySelectorAll('input[name="slot"]')) radio.addEventListener("change", checkFool);
+  showFoolExample(EXAMPLES[0].key);
+}
+
+// --- tabs and start ------------------------------------------------------------
+
+function setupTabs() {
+  for (const tab of document.querySelectorAll(".tab")) {
+    tab.addEventListener("click", () => {
+      for (const t of document.querySelectorAll(".tab")) {
+        const on = t === tab;
+        t.setAttribute("aria-selected", String(on));
+        $(t.dataset.tab).hidden = !on;
+      }
+    });
+  }
+}
+
+async function start() {
+  setupTabs();
+  try {
+    EXAMPLES = await (await fetch("/static/examples.json")).json();
+  } catch (err) {
+    $("compare").replaceChildren(el("p", { class: "error", text: "Could not load the examples." }));
+    return;
+  }
+  setupCompare();
+  setupLive();
+  setupFool();
+}
+
+start();
+</script>
+</body>
+</html>
