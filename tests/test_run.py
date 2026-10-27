@@ -225,6 +225,53 @@ def test_load_records_numbers_physical_lines(tmp_path: Path) -> None:
     assert load_records(path) == [(0, {"a": 1}), (2, {"a": 2})]
 
 
+def _git(repo: Path, *args: str) -> None:
+    import subprocess
+
+    subprocess.run(["git", *args], cwd=repo, check=True, capture_output=True)
+
+
+def test_git_info_dirty_flag(tmp_path: Path) -> None:
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    _git(repo, "init", "-q")
+    _git(
+        repo,
+        "-c",
+        "user.email=t@t",
+        "-c",
+        "user.name=t",
+        "commit",
+        "-q",
+        "--allow-empty",
+        "-m",
+        "x",
+    )
+    (repo / "code.py").write_text("x = 1\n", encoding="utf-8")
+    _git(repo, "add", "code.py")
+    _git(repo, "-c", "user.email=t@t", "-c", "user.name=t", "commit", "-q", "-m", "code")
+
+    def dirty() -> bool:
+        info = git_info(repo)
+        assert info is not None
+        return bool(info["dirty"])
+
+    assert dirty() is False
+    # Output of an earlier run must not mark the next run dirty (the bug that
+    # flagged runs 2-4 of the first ablation).
+    (repo / "results" / "runs" / "r1").mkdir(parents=True)
+    (repo / "results" / "runs" / "r1" / "results.jsonl").write_text("{}\n", encoding="utf-8")
+    assert dirty() is False
+    # An edited tracked file is dirty.
+    (repo / "code.py").write_text("x = 2\n", encoding="utf-8")
+    assert dirty() is True
+    _git(repo, "checkout", "--", "code.py")
+    assert dirty() is False
+    # A new untracked module outside results/ is dirty: it could change behaviour.
+    (repo / "new_module.py").write_text("y = 1\n", encoding="utf-8")
+    assert dirty() is True
+
+
 def test_git_info(tmp_path: Path) -> None:
     info = git_info()
     assert info is not None

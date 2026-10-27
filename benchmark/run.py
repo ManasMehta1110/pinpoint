@@ -94,13 +94,23 @@ def load_records(path: Path) -> list[tuple[int, dict[str, Any]]]:
 
 
 def git_info(repo: Path = REPO_ROOT) -> dict[str, Any] | None:
-    """The code version a run was made with, or None if git is unavailable."""
+    """The code version a run was made with, or None if git is unavailable.
+
+    ``dirty`` is true if anything outside ``results/`` differs from the
+    commit, untracked files included (a new module could change behaviour).
+    ``results/`` is excluded because earlier runs write there: counting their
+    output made every run after the first look dirty.
+    """
     try:
         commit = subprocess.run(
             ["git", "rev-parse", "HEAD"], cwd=repo, capture_output=True, text=True, check=True
         ).stdout.strip()
         status = subprocess.run(
-            ["git", "status", "--porcelain"], cwd=repo, capture_output=True, text=True, check=True
+            ["git", "status", "--porcelain", "--", ".", ":(exclude)results"],
+            cwd=repo,
+            capture_output=True,
+            text=True,
+            check=True,
         ).stdout
     except (OSError, subprocess.CalledProcessError):
         return None
