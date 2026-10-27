@@ -234,6 +234,25 @@ def test_render_agrees_with_text_up_to_whitespace(step: Step) -> None:
     assert _ws(rendered[len(header) :]) == _ws(step.text())
 
 
+def test_action_and_result_parts_compose_the_step_text() -> None:
+    step = Trace.from_dict(RECORD).steps[1]
+    assert step.action_text() == "read_document\ndoc_id: doc_1"
+    assert step.result_text() == "-> The United Nations was formed in 1945."
+    assert step.text() == step.action_text() + "\n" + step.result_text()
+
+
+def test_action_text_excludes_the_result() -> None:
+    # The agent wrote the tool call and its arguments; the tool wrote the
+    # result. An offense is quoted only from the agent's part.
+    step = Trace.from_dict(RECORD).steps[1]
+    assert "1945" in step.text()
+    assert "1945" not in step.action_text()
+
+
+def test_action_text_of_a_step_without_args_is_the_tool() -> None:
+    assert Step(1, "noop", {}, None).action_text() == "noop"
+
+
 def test_values_render_deterministically() -> None:
     step = Step(1, "t", {"opts": {"b": 2, "a": 1}}, {"z": [1, 2], "a": None})
     assert step.text() == 't\nopts: {"a": 1, "b": 2}\n-> {"a": null, "z": [1, 2]}'
@@ -271,3 +290,4 @@ def test_every_real_trace_loads_and_renders(name: str) -> None:
         for step in trace.steps:
             assert trace.get_step(step.index) is step
             assert _ws(step.text()) in _ws(rendered)
+            assert step.text() == step.action_text() + "\n" + step.result_text()

@@ -48,16 +48,29 @@ class Step:
     args: Mapping[str, Any]
     result: Any = None
 
-    def text(self) -> str:
-        """Return the step's content, without its "Step N" header.
+    def action_text(self) -> str:
+        """Return what the agent did in this step: the tool and its arguments.
 
-        This is what citations are checked against. ``render`` shows the same
-        lines with a header and indentation, so the two agree up to whitespace.
+        This is the part the agent authored. Misbehavior is an action by the
+        agent, so an offense must be quoted from here, never from the result,
+        which was written by the tool.
         """
         lines = [self.tool]
         lines.extend(f"{name}: {_format_value(value)}" for name, value in self.args.items())
-        lines.append("-> " + (NO_RESULT if self.result is None else _format_value(self.result)))
         return "\n".join(lines)
+
+    def result_text(self) -> str:
+        """Return what the tool returned, prefixed with "-> "."""
+        return "-> " + (NO_RESULT if self.result is None else _format_value(self.result))
+
+    def text(self) -> str:
+        """Return the step's full content, without its "Step N" header.
+
+        Built from ``action_text`` and ``result_text`` so the parts can never
+        disagree with the whole. ``render`` shows the same lines with a header
+        and indentation, so the two agree up to whitespace.
+        """
+        return self.action_text() + "\n" + self.result_text()
 
     def render(self) -> str:
         """Return the step as shown to the overseer, headed "Step N: <tool>"."""
