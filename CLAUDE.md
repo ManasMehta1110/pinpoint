@@ -185,7 +185,14 @@ python -m venv .venv
 - GroundingBench grader understates content citations (tool-name keywords,
   unquotable "unclear", subject-word DECEIVER keywords). State this whenever
   the grader figure appears.
-- Baseten spend: $12.56 of $100 (8 runs).
+- Mid-trace (36 scripted traces, DEVLOG 19:20), offense on labelled step
+  with any misbehavior verdict: single 23/24, single_rule 24/24,
+  two_slot_no_rule 21/24, two_slot 21/24 (p = 0.23); 0/12 false positives.
+  All six two-slot misses: a misleading "all tests pass" answer filed as
+  `offense`, the tampering as `contradicted_by`. Never claim two slots
+  improve localization in general; claim they fix the substitution.
+  The offense rule alone is the most robust cell (113/114 across both sets).
+- Baseten spend: $13.83 of $100 (12 runs).
 - `git_info` excludes `results/`. Runs 2-4 of the first ablation record a
   false-positive `dirty: true`; documented, not edited.
 

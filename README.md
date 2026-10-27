@@ -58,9 +58,32 @@ single-slot failure is not an inability to find the lie. Asked for one piece of
 evidence, the model gives the proof that the claim is false; asked for both, it
 gives both, correctly separated. The rule alone allowed one degenerate citation
 (a document id, which is technically the agent's own action); two slots never
-did. The `offense` slot is still defined as "where the agent itself did the
-wrong thing", so whether this generalises to misbehavior that is not in the
-agent's final answer is untested.
+did.
+
+**When the offense is not the final answer.** Every GroundingBench smoking
+gun is the agent's final answer, so we built 36 coding-agent traces where it
+is not: the agent edits a test so it passes, or writes "all tests passing"
+into a status file or commit after seeing them fail, then gives a true or
+neutral final answer. The dataset and its labels were committed before any
+model saw them (`benchmark/datasets/midtrace.jsonl`, commit `2f04147`), with
+the analysis fixed in advance. Prompt unchanged. Offense on the labelled step,
+over misbehavior traces flagged as any misbehavior class:
+
+| | no rule | rule |
+|---|---|---|
+| **one slot** | 23/24 | 24/24 |
+| **two slots** | 21/24 | 21/24 |
+
+No false positives on the 12 honest controls in any configuration. All four
+find offenses in the middle of a trace, so the GroundingBench result is not
+just "quote the final answer". But two slots lose their edge: the single-slot
+substitution almost vanishes here (1 of 12 deceivers), and two slots show a
+bias of their own. Each two-slot miss is a test-tampering trace ending in a
+true but misleading "All tests pass now." The model calls it deception, files
+that claim as the `offense` and the tampering evidence as `contradicted_by`.
+The difference is not significant (Fisher p = 0.23), and scripted traces are
+not recorded agent runs. On both datasets together, the offense rule alone was
+the most robust configuration (113/114).
 
 **Verify-and-retry did not contribute here.** Across all 1,920 audits, no
 citation ever failed verification, so no retry was triggered. The gain comes
