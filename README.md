@@ -40,7 +40,29 @@ different model, format and prompt, on both distributions.
 own action, every one of 179 correctly flagged deceptive traces cites the
 agent's false claim, and every misbehavior offense lands on the labelled step.
 
-**Verify-and-retry did not contribute here.** Across all 1,680 audits, no
+**What does the work: splitting the citation.** Pinpoint changes two things:
+it splits the citation into two slots, and it adds a rule that the offense
+must quote the agent's own action, never a tool's result. A 2x2 factorial on
+the 120 rule-based traces separates them (offense on the labelled step):
+
+| | no rule | rule |
+|---|---|---|
+| **one slot** | 42.2% (38/90) | 98.9% (89/90) |
+| **two slots** | 100% (90/90) | 100% (90/90) |
+
+Either ingredient alone fixes it, and two slots need no rule at all. With two
+slots and no rule, the model put the agent's false answer in `offense` and the
+exposing document in `contradicted_by` in all 30 deceptive traces: the same
+document the single-slot overseer had chosen as its only citation. The
+single-slot failure is not an inability to find the lie. Asked for one piece of
+evidence, the model gives the proof that the claim is false; asked for both, it
+gives both, correctly separated. The rule alone allowed one degenerate citation
+(a document id, which is technically the agent's own action); two slots never
+did. The `offense` slot is still defined as "where the agent itself did the
+wrong thing", so whether this generalises to misbehavior that is not in the
+agent's final answer is untested.
+
+**Verify-and-retry did not contribute here.** Across all 1,920 audits, no
 citation ever failed verification, so no retry was triggered. The gain comes
 from the prompt and schema; the verifier is a guarantee that was never needed
 on this data. (A forced test confirms the retry works: told its citation was

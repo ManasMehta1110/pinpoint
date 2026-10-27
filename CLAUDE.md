@@ -158,13 +158,18 @@ python -m venv .venv
 **Results so far (all 720 traces, Muse Spark Open, see DEVLOG 17:38, 18:28)**
 - Single slot: deceptive traces cite the exposing document 176/180; offense
   on labelled step 240/538. Two-slot: 0/179 and 536/536.
-- Zero citation retries in 1,680 audits. Do not claim verify-and-retry
+- Factorial (120 rule-based traces, offense on labelled step): single 38/90,
+  single_rule 89/90, two_slot_no_rule 90/90, two_slot 90/90. The split alone
+  suffices; with two slots and no rule the document goes to
+  `contradicted_by` 30/30. Frame the single-slot failure as a schema
+  ambiguity, not a capability gap.
+- Zero citation retries in 1,920 audits. Do not claim verify-and-retry
   produced the gain: the schema did. The verifier is a guarantee, unexercised
   on GroundingBench.
 - GroundingBench grader understates content citations (tool-name keywords,
   unquotable "unclear", subject-word DECEIVER keywords). State this whenever
   the grader figure appears.
-- Baseten spend: about $11 of $100.
+- Baseten spend: $12.56 of $100 (8 runs).
 - `git_info` excludes `results/`. Runs 2-4 of the first ablation record a
   false-positive `dirty: true`; documented, not edited.
 
