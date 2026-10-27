@@ -928,12 +928,29 @@ browser against the local server, and all worked.
   extracts to one `pinpoint-<sha>/` folder as the copy step expects. The first
   attempt 404'd because I mistyped the hash.
 
+### 21:51 · Live on Render · https://pinpoint-1sjo.onrender.com/
+
+Hugging Face was ruled out: free CPU Spaces now require PRO, and ZeroGPU is
+for Gradio apps. Vercel was considered and declined: serverless instances
+share no memory, so the in-memory spending caps would not hold without a
+shared store. Render free tier, root `Dockerfile`, branch `main` (auto-deploy
+on push), Oregon, `BASETEN_API_KEY` set in Render, health check
+`/api/status`. `deploy/huggingface/` is unused (needs paid hardware).
+
+Checked against the live URL: page and `examples.json` byte-identical to the
+repo; `/docs` and `/openapi.json` 404; verifier rejects the document as an
+offense and accepts the lie; a 70 KB body is refused (413); one live audit of
+the Louvre trace verified in 6.1 s, $0.0048, both citations highlighted.
+
+Free instances sleep after 15 minutes idle (first load up to about a minute).
+Plan: an external pinger on `/api/status` every 10 minutes keeps it awake
+within the 750 free hours a month.
+
 ---
 
 ## Next
 
-- Deploy: create the Space (or Render service), set `BASETEN_API_KEY`,
-  check the live URL.
+- Pinger on `/api/status`; check the URL from a phone.
 - Muse Spark once the card hold succeeds.
 - If time is left: offense-slot fix (more than one offense, or the earliest
   step) on fresh held-out traces.

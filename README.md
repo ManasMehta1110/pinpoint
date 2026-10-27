@@ -6,6 +6,9 @@ exact step that proves it.
 Built solo for the Meta Global AI Developer Hackathon (Indie track),
 October 27 to November 4, 2026.
 
+**Live demo: [pinpoint-1sjo.onrender.com](https://pinpoint-1sjo.onrender.com/)**
+(free hosting: if it has been idle, the first load can take up to a minute).
+
 ## Results
 
 All 720 of GroundingBench's held-out traces (120 rule-based, 600 written by an

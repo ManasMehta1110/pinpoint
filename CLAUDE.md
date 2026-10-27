@@ -98,6 +98,10 @@ python -m venv .venv
   reasoning; the build fails otherwise.
 - Only verified citations are highlighted. Page text from traces goes into
   the DOM via `textContent` only: live traces are visitor input.
+- Deployed on Render (free), https://pinpoint-1sjo.onrender.com/, from the
+  root `Dockerfile`; every push to `main` redeploys, so the live demo is
+  whatever is on `main`. Key is set in Render's environment, not the repo.
+  Hugging Face needs paid hardware; Vercel would break the in-memory caps.
 - Live audits cost money: keep the caps (`PINPOINT_DAILY_CAP` etc.). Tests
   build the app with `create_app(overseer, ...)` and a scripted model, never
   `default_overseer()` with a key.
