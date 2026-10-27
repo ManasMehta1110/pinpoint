@@ -15,6 +15,10 @@ history shows when. The full build log is in [DEVLOG.md](DEVLOG.md).
   GroundingBench's 720 held-out traces from a pinned commit and accepts each
   file only after a SHA-256 check and a trace-count check. Downloads are
   atomic: an interrupted or tampered fetch never leaves a usable-looking file.
+- **Trace model** (`pinpoint/trace.py`). Loads an agent run keeping only
+  what is observable, drops any labels, and renders it with steps numbered
+  from 1. The text the overseer reads and the text its citations are checked
+  against come from one function, so they cannot drift apart.
 - **Label-free guarantee** (`tests/test_packaging.py`). A test that fails if
   the overseer package ever imports the grader or reads a ground-truth field,
   so Pinpoint provably audits traces without seeing their answers.
