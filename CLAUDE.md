@@ -124,6 +124,18 @@ python -m venv .venv
 - Every GroundingBench smoking gun is the `submit_answer` step. The offense
   rule does not reveal that, but the benchmark aligns with it; disclose this
   next to any grounding result.
+- `mode="single"` is the ablation baseline (one `evidence` slot, no offense
+  rule). The modes must differ only in their slots, in both the tool and the
+  prompt; tests enforce this.
+
+**Prompt rules**
+- Changing any wording the model sees (system prompts, tool schemas, user
+  template, retry text) requires bumping `PROMPT_VERSION` and pinning the new
+  fingerprint in `tests/test_prompt.py`. Never edit an existing pin.
+- Never name `submit_answer`, "last step" or "final step" in a prompt or
+  tool description: that is the benchmark's answer key.
+- Zero-shot by design. Few-shot examples need a recorded decision and a new
+  `PROMPT_VERSION`.
 - A Windows checkout with `core.autocrlf=true` stores these files with CRLF;
   their hashes differ from the canonical LF files. Content is identical.
 

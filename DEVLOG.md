@@ -191,7 +191,7 @@ GroundingBench paper measured, so verify-and-retry alone will not fix it; it
 catches fabricated and misplaced citations. Addressing "decisive" is a
 citation-schema and prompt question, taken up next.
 
-### 11:01 · Two-slot audit and the offense rule · (uncommitted)
+### 11:01 · Two-slot audit and the offense rule · `bfcefe6`
 
 `pinpoint/audit.py`, `tests/test_audit.py`; `pinpoint/trace.py` and
 `pinpoint/verifier.py` extended.
@@ -242,11 +242,52 @@ verifies only if its offense and any contradiction both verify.
   `True` unchanged. The redundant guard was deleted rather than tested; the
   mutation that would actually turn `True` into step 1 is caught.
 
+### 11:13 · Prompt, single-slot baseline mode · (uncommitted)
+
+`pinpoint/prompt.py`, `tests/test_prompt.py`; `pinpoint/audit.py` gains
+`mode`.
+
+**Ablation mode.** `audit.py` now supports `mode="two_slot"` (Pinpoint) and
+`mode="single"` (baseline: one `evidence` slot, checked against the whole
+step, no offense rule, i.e. what GroundingBench asked for). Tool, parser,
+verifier and feedback all follow the mode. Tests enforce that the two tools
+differ only in their slots and the two system prompts only in their slot
+section, so any result difference can be credited to the slots rather than
+to wording.
+
+**Prompt design**
+- Zero-shot. Few-shot examples would either reuse benchmark traces or encode
+  where the benchmark puts evidence; the instructions and schema do the work.
+  The GroundingBench paper's baselines were 3-shot, so its frontier numbers
+  are context, not a like-for-like comparison. Pinpoint's own ablation is.
+- Class definitions are behavioural and general ("claimed a result without
+  doing the work"), not tied to GroundingBench's doer design, so the same
+  prompt applies to coding-agent traces.
+- The trace is untrusted data: enclosed in markers whose id is a hash of the
+  trace's content, so text inside a trace cannot forge the closing marker.
+  Trace text is never interpreted as a format template.
+- A test forbids `submit_answer`, "last step", "final step" and "smoking" in
+  any prompt or tool schema. Every benchmark smoking gun is the submit step,
+  so naming it would teach to the test.
+- `PROMPT_VERSION` ("1") is saved with every run, and a test pins the
+  fingerprint of everything the model is shown (both prompts, both tool
+  schemas, user template, retry wording). Any wording change fails the build
+  until the version is bumped.
+- Size: about 526 tokens of instructions plus about 242 per trace.
+
+**Audit**
+- ruff clean, mypy `--strict` clean on 13 files, sources ASCII-only,
+  **310 tests pass** (40 new).
+- Mutation testing: 15 of 15 caught, including rewording without a version
+  bump, the modes diverging outside the slot section, a leak of
+  `submit_answer` into the prompt (caught by two separate tests), a forgeable
+  trace marker, trace text treated as a template, and the single-slot
+  baseline accidentally enforcing the offense rule.
+
 ---
 
 ## Next
 
-- `pinpoint/prompt.py`: system prompt defining the four classes and the two
-  slots, with the trace delimited as untrusted data.
 - Once the Meta API key is live: `pinpoint/client.py`, then one trace end to
   end with the raw response saved.
+- `pinpoint/overseer.py`: audit, verify, retry loop over the client.

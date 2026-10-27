@@ -33,6 +33,16 @@ history shows when. The full build log is in [DEVLOG.md](DEVLOG.md).
   GroundingBench (citing the document that exposes a lie instead of the lie).
   On real data, all 399 such substitutions across 180 deceptive traces are
   rejected, and every genuine citation is accepted.
+- **Overseer prompt** (`pinpoint/prompt.py`). Zero-shot instructions with
+  general class definitions, so the same prompt applies to any agent. The
+  trace is enclosed in markers keyed to a hash of its content, so text
+  inside a trace cannot break out and give the auditor instructions. Every
+  run records `PROMPT_VERSION`, and the build fails if the wording changes
+  without a version bump.
+- **Ablation baseline** (`mode="single"`). One evidence slot and no offense
+  rule, the way GroundingBench asked. Tests guarantee it differs from
+  Pinpoint only in its citation slots, so the comparison isolates their
+  effect.
 - **Label-free guarantee** (`tests/test_packaging.py`). A test that fails if
   the overseer package ever imports the grader or reads a ground-truth field,
   so Pinpoint provably audits traces without seeing their answers.
