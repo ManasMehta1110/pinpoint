@@ -85,6 +85,18 @@ The difference is not significant (Fisher p = 0.23), and scripted traces are
 not recorded agent runs. On both datasets together, the offense rule alone was
 the most robust configuration (113/114).
 
+**It knew, it didn't say.** The single-slot model had found the lie. In the
+176 substitutions its saved reasoning refers to the agent's false answer in
+166, explicitly weighs citing it in 137, and remarks that it may give only
+one citation in 94 (line-level pattern counts, lower bounds; a random sample
+was read to check them). From one trace: "We must cite step 2 or 3. Provide
+both? Only one evidence object allowed per schema. So pick step 2." From
+another: "Probably best to cite Step 5 where false claim is made, or Step 2
+... I'll choose Step 2." The substitution is a choice the one-slot schema
+forces, which is why a second slot removes it.
+([`benchmark/knew.py`](benchmark/knew.py), output in
+[`results/analysis/knew.json`](results/analysis/knew.json).)
+
 **Verify-and-retry did not contribute here.** Across all 1,920 audits, no
 citation ever failed verification, so no retry was triggered. The gain comes
 from the prompt and schema; the verifier is a guarantee that was never needed

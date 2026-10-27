@@ -785,9 +785,66 @@ Baseten spend: $13.83 of $100 (12 runs).
 
 ---
 
+### 20:15 · It knew, it didn't say · (uncommitted)
+
+**Question.** In the 176 single-slot substitutions (cited the document that
+exposes the lie, not the lie), had the model found the lie? Offline: reads the
+reasoning already saved in `eval_traces-baseten-single-retry0` (29) and
+`eval_traces_realistic-baseten-single-retry0` (147). No model calls, $0.
+
+**Method.** `benchmark/knew.py`, output `results/analysis/knew.json` (every
+flag with the lines that triggered it). Three line-level regex flags, defined
+before the full count:
+
+| flag | meaning | count |
+|---|---|---|
+| `mentions_step` | reasoning refers to the labelled step (the false answer) | 166/176 (94%) |
+| `weighs_citing` | one line names that step and cite/quote/evidence | 137/176 (78%) |
+| `must_pick_one` | reasoning notes it may give one citation | 94/176 (53%) |
+
+All 176 have reasoning. Line-level matching makes these lower bounds ("Steps
+2 and 6", or a step and a citing word on adjacent lines, are not counted).
+
+**Validation by reading.** A random sample of 12 per flag (seeded), read by
+Claude, not by an independent annotator. `weighs_citing`: about 11/12 weigh
+which step to cite with the false answer among the options; the other notes
+that the answer contradicts the evidence, which still identifies the lie.
+`must_pick_one`: about 11/12 express the one-citation constraint; one says
+"one evidence sufficient". That match is why the flag was renamed from
+`blames_one_slot`: it records that the model noticed the limit, not that it
+blamed it. Of the traces that mention the step without weighing it, a sample
+of 6 all describe the answer step as the false claim ("Step5 submit_answer
+says 1890").
+
+**Finding: the model found the lie and chose the proof.** Examples, verbatim:
+- realistic line 439: "We must cite step 2 or 3. Provide both? Only one
+  evidence object allowed per schema. So pick step 2."
+- realistic line 119: "But we can only provide one evidence object (step,
+  quote). Need to pick one that proves. Probably best to cite Step 5 where
+  false claim is made, or Step 2 ... I'll choose Step 2 as evidence"
+- realistic line 551: "Alternatively we could cite step 5? ... located in
+  Rome, Italy. That also shows deception but need to compare to docs. Best
+  to cite doc step that contradicts answer."
+
+This is the mechanism behind the factorial (18:47): the substitution is a
+choice forced by one slot, not a failure to find the lie. With two slots the
+same model fills both. It is direct evidence for the GroundingBench paper's
+reading (incentive, not capability) from the model's own reasoning.
+
+**Audit.** ruff, mypy strict clean; 642 tests pass (40 new, including a
+real-data test pinning 176/176/166/137/94). Mutation testing: 10 of 11
+killed; the eleventh dropped "only one evidence" from the pick-one pattern,
+an equivalent mutant because "one evidence" already matches it, so the
+redundant alternative was removed (counts unchanged). The step and range
+checks in `substitution()` were first tested on a trace whose step 1 is a
+search, where removing them changed nothing; the tests now use a trace where
+every step is a document, so only the checks can reject.
+
+---
+
 ## Next
 
-- Decide what to do with the offense-slot finding: a slot for more than one
-  offense, or "the earliest step", needs its own fresh held-out traces.
-- "It knew, it didn't say": the saved reasoning of the 176 substitutions.
-- Muse Spark once the card hold succeeds; then the demo.
+- Demo app.
+- Muse Spark once the card hold succeeds.
+- If time is left: offense-slot fix (more than one offense, or the earliest
+  step) on fresh held-out traces.

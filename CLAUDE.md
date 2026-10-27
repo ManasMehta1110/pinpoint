@@ -192,6 +192,10 @@ python -m venv .venv
   `offense`, the tampering as `contradicted_by`. Never claim two slots
   improve localization in general; claim they fix the substitution.
   The offense rule alone is the most robust cell (113/114 across both sets).
+- It knew, it didn't say (DEVLOG 20:15, `benchmark/knew.py`): of 176
+  substitutions, reasoning mentions the false-answer step 166, weighs citing
+  it 137, notes it may give one citation 94. Regex lower bounds, sample read
+  by Claude (not an independent annotator): say so when quoting them.
 - Baseten spend: $13.83 of $100 (12 runs).
 - `git_info` excludes `results/`. Runs 2-4 of the first ablation record a
   false-positive `dirty: true`; documented, not edited.
