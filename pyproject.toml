@@ -46,6 +46,12 @@ strict = true
 files = ["pinpoint", "benchmark", "tests"]
 enable_error_code = ["possibly-undefined"]
 
+# GroundingBench (prior work) ships no type information. Only benchmark/
+# imports it; values it returns are converted at the boundary.
+[[tool.mypy.overrides]]
+module = ["env.*", "doers.*"]
+ignore_missing_imports = true
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 pythonpath = ["."]
