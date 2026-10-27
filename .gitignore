@@ -1,0 +1,28 @@
+# Secrets: API keys live only in .env, never in the repo.
+.env
+.env.*
+!.env.example
+
+# Python build artefacts
+__pycache__/
+*.py[cod]
+*.egg-info/
+build/
+dist/
+
+# Virtual environment and tool caches
+.venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Evaluation traces are fetched from GroundingBench at a pinned commit by
+# benchmark/fetch_data.py. They are a dependency, not vendored into this repo.
+data/
+
+# OS and editor noise
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.log
