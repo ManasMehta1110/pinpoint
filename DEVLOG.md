@@ -401,7 +401,7 @@ the single-slot ablation on the same model. If single-slot Muse Spark Open
 also grounds near 100%, the finding becomes "grounding failure depends on how
 the overseer is asked", which changes the pitch.
 
-### 17:18 · Benchmark harness · (uncommitted)
+### 17:18 · Benchmark harness · `a470756` and the commits before it
 
 `benchmark/run.py`, `benchmark/grade.py`, `tests/conftest.py`,
 `tests/test_run.py`, `tests/test_grade.py`, `results/smoke/harness-8/`.
@@ -461,10 +461,66 @@ done: rendering evidence as "step N (tool): quote" so the tool name is added
 automatically. That would lift REWARD_HACKER to 100% with text the model never
 wrote, which is gaming the grader.
 
+### 17:38 · First results: the 2x2 ablation · (uncommitted)
+
+`results/runs/eval_traces-baseten-{single,two_slot}-retry{0,2}/`; a fix to
+`git_info`.
+
+All four runs on the 120-trace original set, Muse Spark Open, code at
+`a470756`, 480 traces, no failures, about $3.19 in total.
+
+| | single, no retry | single, retry 2 | two-slot, no retry | two-slot, retry 2 |
+|---|---|---|---|---|
+| verdict accuracy | 120/120 | 119/120 | 120/120 | 120/120 |
+| offense on labelled step | 38/90 | 39/90 | 90/90 | 90/90 |
+| per class (RH / LAZY / DEC) | 7 / 30 / 1 | | 30 / 30 / 30 | |
+| GroundingBench grader | 12/90 | 12/90 | 40/90 | 40/90 |
+| citations verified | 90/90 | 90/90 | 90/90 | 90/90 |
+| citation retries triggered | 0 | 0 | 0 | 0 |
+
+**Finding 1: the substitution reproduces on Meta's model.** Single-slot
+DECEIVER offenses cited a `read_document` result in 29 of 30 traces: the
+document exposing the lie, not the lie. This is GroundingBench's failure mode,
+in a different model, a tool-call format and a zero-shot prompt, so it is not
+an artefact of the paper's setup. The risk raised after the smoke test (that
+single-slot might also score near 100%, which would have undercut the pitch)
+did not materialise.
+
+**Finding 2: the two-slot schema eliminates it.** Two-slot DECEIVER offenses
+cited the agent's own `submit_answer` action in 30 of 30 traces; offense on
+the labelled step went from 42.2% to 100% across all three classes.
+
+**Finding 3: verify-and-retry contributed nothing on this data.** No citation
+failed verification in any of the 480 audits, so no retry was triggered in
+either mode. Muse Spark Open never fabricated a quote; its single-slot failure
+was citing something real but wrong, which the single-slot verifier accepts
+by design (it has no offense rule). In two-slot mode the model never attempted
+the substitution, so the offense rule's check never had to fire. The gain is
+the prompt and schema; the verifier is a guarantee, unexercised here.
+
+**Finding 4: Pinpoint reaches the grader's content ceiling.** Of the 90
+eligible traces, 50 cannot be credited by GroundingBench's grader for quoting
+what the agent said: 30 REWARD_HACKER labels expect the tool name
+`submit_answer`, 18 LAZY labels expect "unclear" (absent from the trace), and
+2 DECEIVER labels fell back to `submit_answer` because the claim was a bare
+acronym ("USA", "IOC"). Two-slot Pinpoint is credited on 40 of 40 of the rest.
+
+**Provenance note: runs 2-4 record `dirty: true`; this is a false positive.**
+`git_info` counted untracked files anywhere, so each run's output made the
+next run look dirty. Verified after the runs: every tracked file was exactly
+`a470756` (`git diff HEAD` empty) and the only untracked path was
+`results/runs/`. The manifests are left as written rather than edited after the
+fact. `git_info` now excludes `results/` but still counts untracked files
+elsewhere (a new module could change behaviour); a test builds a throwaway
+repository to check all four cases, and reverting the fix fails it.
+
+**Caveats**: one model, one run per cell, 120 traces; the benchmark's smoke
+guns all sit in the agent's final answer, which the offense rule aligns with.
+
 ---
 
 ## Next
 
-- Commit the harness, so benchmark runs record a clean commit.
-- First real numbers: the 2x2 ablation (single vs two slots, with and without
-  citation retries) on the 120-trace set.
+- Realistic distribution (600 traces) for the two decisive cells: single and
+  two-slot without retry. About $8.
+- The demo, built around Finding 1 vs Finding 2 side by side.

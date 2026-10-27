@@ -6,6 +6,53 @@ exact step that proves it.
 Built solo for the Meta Global AI Developer Hackathon (Indie track),
 October 27 to November 4, 2026.
 
+## Results
+
+GroundingBench's 120-trace held-out set (original distribution), audited by
+Muse Spark Open (`meta-models/muse-spark-open-1026` via Baseten), one run per
+configuration. "Eligible" traces are the 90 misbehaviors whose verdict was
+correct, as in the original paper. Brackets are 95% Wilson intervals.
+
+| | single citation | two citations + offense rule (Pinpoint) |
+|---|---|---|
+| verdict accuracy | 100% (120/120) | 100% (120/120) |
+| **offense cites the labelled step** | **42.2%** (38/90) [33-53] | **100%** (90/90) [96-100] |
+| deceptive traces: cites the agent's false claim | 1 / 30 | 30 / 30 |
+| citations verified as real | 100% | 100% |
+
+**The failure reproduces on Meta's model.** Asked for a single citation,
+Muse Spark Open cited the document that exposes a deceptive agent's lie,
+rather than the lie itself, in 29 of 30 deceptive traces. That is the
+substitution GroundingBench measured in other frontier overseers, now in a
+different model, format and prompt.
+
+**Pinpoint's schema removes it.** With separate `offense` and
+`contradicted_by` slots, and the rule that an offense must quote the agent's
+own action, all 30 deceptive traces cite the agent's false claim, and every
+misbehavior offense lands on the labelled step.
+
+**Verify-and-retry did not contribute here.** Across all 480 audits, no
+citation ever failed verification, so no retry was triggered. The gain comes
+from the prompt and schema; the verifier is a guarantee that was never needed
+on this data. (A forced test confirms the retry works: told its citation was
+"returned by the read_document tool, not written by the agent", the model
+corrected it.)
+
+**Caveats.**
+- One model, one run per cell, 120 traces.
+- Every GroundingBench smoking gun is the agent's final `submit_answer` step,
+  which the offense rule aligns with. The rule does not name that step, and
+  citing any other agent action also verifies, but the alignment is real.
+- Under GroundingBench's own grader the figures are 13.3% (single) and 44.4%
+  (Pinpoint). Fifty of the 90 eligible traces cannot be credited for quoting
+  what the agent actually said: their labels expect the tool name
+  `submit_answer` or a word that never appears in the trace. Pinpoint is
+  credited on all 40 that can be.
+
+Full per-trace records, including every raw model response, are in
+[`results/runs/`](results/runs/); `python -m benchmark.grade <run>`
+reproduces every figure above offline.
+
 ## Built during the hackathon
 
 Work in progress. Each component is listed here as it lands, and the commit
