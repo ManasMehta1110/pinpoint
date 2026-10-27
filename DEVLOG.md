@@ -96,7 +96,7 @@ interrupted or tampered download never leaves a plausible-looking file.
 Added `CLAUDE.md` (rules, audit protocol, layout, commands, API facts) and
 this log. README now lists shipped components.
 
-### 09:46 · Trace model and renderer · (uncommitted)
+### 09:46 · Trace model and renderer · `8d59055`
 
 `pinpoint/trace.py`, `tests/test_trace.py`.
 
@@ -137,11 +137,64 @@ false date". This is the limitation the GroundingBench paper already states.
 Consequences: report benchmark grounding numbers with this caveat, and choose
 demo traces where the false fact is unmistakable.
 
+### 10:49 · Label-free citation verifier · (uncommitted)
+
+`pinpoint/verifier.py`, `tests/test_verifier.py`.
+
+Checks that an overseer's citation (verdict, step, quote) is *real*, using
+only the trace: valid verdict; the step is a true integer that exists; the
+quote is specific and pinpoint-sized; the quote appears in that step ignoring
+case, whitespace, curly quotes and dash styles, on word boundaries. Every
+problem is reported together, plus where the quote does appear, so the
+overseer can be told exactly what to fix.
+
+**Design decision: no class-consistency check.** An earlier plan had the
+verifier require, e.g., that a DECEIVER citation point at the
+`submit_answer` step. Dropped: that is GroundingBench's answer-key convention
+for where evidence lives, and building it into a "label-free" verifier would
+inflate every grounding number reported. The verifier judges whether a
+citation is real, never whether it is the best one.
+
+**Bugs found in review, fixed before testing**
+- Punctuation outside quote marks (`"European Union".`) was not stripped, so
+  faithful quotes failed. Stripping now repeats until stable.
+- Substring matching accepted word fragments (`016` in `1016`). Matches must
+  now fall on word boundaries; underscores count as boundaries.
+- An invalid step with a real quote produced a misleading `quote_not_in_step`
+  issue. The location hint now rides on the step error instead.
+
+**Audit**
+- ruff clean, mypy `--strict` clean on 9 files, sources ASCII-only,
+  **183 tests pass** (96 new).
+- Property tests on all 540 real misbehavior traces: every ground-truth
+  citation whose keyword is in its labelled step verifies (522 of 522), and
+  the same quote cited at a step that lacks it is rejected.
+- Mutation testing: 14 of 14 planted bugs caught.
+
+**Finding: 18 GroundingBench labels cannot be quoted.** In the original
+distribution, 18 of 30 LAZY traces carry the keyword "unclear", but the
+labelled step never says "unclear"; it says e.g. "I couldn't find a
+definitive answer." The keyword is a class tag rather than text from the
+trace, so the reference grader can only credit an overseer that writes the
+word "unclear" itself: describing earns credit, quoting does not. The
+realistic distribution has none of these (0 of 150). Relevant to how the
+paper's LAZY-original numbers are read. Pinned by an exact-count test.
+
+**Finding: `question_id` is not unique.** Each question appears once per
+class (`q_0103` occurs 4 times). Results must be keyed by file and line, never
+by `question_id`, or three of every four rows would be overwritten.
+
+**Finding: real is not the same as decisive.** Citing the corroborating
+document ("occurred in 1066", step 2) instead of the false claim (step 5)
+verifies, correctly, because it is real. This is the failure mode the
+GroundingBench paper measured, so verify-and-retry alone will not fix it; it
+catches fabricated and misplaced citations. Addressing "decisive" is a
+citation-schema and prompt question, taken up next.
+
 ---
 
 ## Next
 
-- `pinpoint/verifier.py`: label-free citation check (step exists, quote
-  appears verbatim in that step, quote is non-trivial), integer step matching.
+- Decide the citation schema (see "real is not the same as decisive").
 - Once the Meta API key is live: `pinpoint/client.py`, then one trace end to
   end with the raw response saved.

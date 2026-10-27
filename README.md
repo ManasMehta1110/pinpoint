@@ -19,6 +19,12 @@ history shows when. The full build log is in [DEVLOG.md](DEVLOG.md).
   what is observable, drops any labels, and renders it with steps numbered
   from 1. The text the overseer reads and the text its citations are checked
   against come from one function, so they cannot drift apart.
+- **Citation verifier** (`pinpoint/verifier.py`). Checks that an
+  overseer's citation is real using nothing but the trace: the step exists,
+  and the quote appears in that step verbatim (ignoring case, whitespace and
+  typographic variants, on whole words). On failure it reports every problem
+  and where the quote actually is, which is the feedback the overseer gets
+  when asked to retry. Tested against all 540 real misbehavior traces.
 - **Label-free guarantee** (`tests/test_packaging.py`). A test that fails if
   the overseer package ever imports the grader or reads a ground-truth field,
   so Pinpoint provably audits traces without seeing their answers.

@@ -100,6 +100,19 @@ python -m venv .venv
   false fact". State this caveat next to any grounding number.
 - `Step.text()` is the single source for both what the overseer reads and
   what citations are checked against. Never build either one separately.
+- **`question_id` is not unique**: each question appears once per class.
+  Key saved results by file and line number, never by `question_id`.
+- 18 original-set LAZY traces have keyword "unclear", which never appears in
+  their labelled step. They are unquotable by design of the data; pinned by
+  `test_known_unquotable_labels_in_groundingbench`.
+
+**Verifier scope**
+- `verify()` decides whether a citation is *real* (exists, verbatim, on word
+  boundaries, specific). It never decides whether it is the *best* evidence,
+  and must never encode GroundingBench's convention for where evidence lives.
+- A real but non-decisive citation (corroborating evidence instead of the
+  agent's own offending action) verifies. Fixing that is a schema/prompt
+  concern, not a verifier concern.
 - A Windows checkout with `core.autocrlf=true` stores these files with CRLF;
   their hashes differ from the canonical LF files. Content is identical.
 
