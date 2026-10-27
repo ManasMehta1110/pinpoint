@@ -4,7 +4,8 @@
 # file to the Space. Set BASETEN_API_KEY as a secret in the Space settings.
 FROM python:3.11-slim
 
-ARG PINPOINT_COMMIT=REPLACE_WITH_COMMIT_SHA
+# 501077f: "Demo app: compare, audit live, try to fool the verifier"
+ARG PINPOINT_COMMIT=501077ff3afc0e2a517b4f74ecf5f22c5ea9ac90
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
