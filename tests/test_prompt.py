@@ -26,7 +26,10 @@ DATA_DIR = Path(__file__).resolve().parent.parent / "data"
 # Every PROMPT_VERSION ever used, with the fingerprint of what the model saw.
 # Saved runs record PROMPT_VERSION, so this mapping must never be edited for
 # an existing version: bump the version instead.
-PINNED_FINGERPRINTS = {"1": "0f37a23b8b34"}
+PINNED_FINGERPRINTS = {
+    "1": "0f37a23b8b34",  # results/smoke/first_call_baseten.json was produced with this
+    "2": "1417885ea517",  # adds the overseer's format-recovery messages
+}
 
 TRACE = Trace.from_dict(
     {

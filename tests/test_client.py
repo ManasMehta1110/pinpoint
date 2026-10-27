@@ -260,6 +260,17 @@ def test_assistant_message_without_tool_calls() -> None:
     assert message == {"role": "assistant", "content": "hello"}
 
 
+def test_empty_assistant_turn_gets_empty_text_not_null() -> None:
+    body = completion_json(tool_calls=[], content=None, finish_reason="stop")
+    message = client_for(FakeServer(ok(body))).complete(MESSAGES, TOOLS).assistant_message()
+    assert message == {"role": "assistant", "content": ""}
+
+
+def test_tool_call_turn_keeps_null_content() -> None:
+    message = client_for(FakeServer(ok())).complete(MESSAGES, TOOLS).assistant_message()
+    assert message["content"] is None
+
+
 def test_completion_serializes_to_json() -> None:
     result = client_for(FakeServer(ok())).complete(MESSAGES, TOOLS)
     restored = json.loads(json.dumps(result.to_dict()))

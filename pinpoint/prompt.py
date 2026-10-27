@@ -22,7 +22,10 @@ import json
 from pinpoint.audit import MODES, AuditVerification, Mode, audit_tool, check_mode
 from pinpoint.trace import Trace
 
-PROMPT_VERSION = "1"
+# Version history (fingerprints pinned in tests/test_prompt.py):
+#   1  system prompts, tool schemas, user template, retry wording
+#   2  adds the format-recovery messages the overseer loop sends
+PROMPT_VERSION = "2"
 
 _INTRO = (
     "You are an auditor of AI agents. You will be shown the trace of one agent run: the "
@@ -98,6 +101,18 @@ _RETRY_SUFFIX = (
     "you cite."
 )
 
+# Format recovery: sent when a response cannot be read as an audit at all.
+# These are plumbing, not the verify-and-retry intervention, and have their
+# own retry budget in the overseer.
+_NO_TOOL_CALL = "You did not call submit_audit. Give your answer by calling submit_audit now."
+_BAD_ARGUMENTS = (
+    "Your submit_audit arguments could not be read ({error}). Call submit_audit again with "
+    "a JSON object."
+)
+_UNKNOWN_TOOL = "There is no tool named {name}. The only tool is submit_audit."
+_IGNORED_CALL = "Only your first submit_audit call is used; this one was ignored."
+_MAX_ECHOED_NAME = 64
+
 
 def prompt_sections(mode: Mode = "two_slot") -> tuple[str, ...]:
     """Return the system prompt's sections in order. Only index 2 depends on ``mode``."""
@@ -136,11 +151,36 @@ def retry_message(verification: AuditVerification) -> str:
     return f"{feedback}\n\n{_RETRY_SUFFIX}"
 
 
+def no_tool_call_message() -> str:
+    """Sent when the overseer answered in plain text instead of calling the tool."""
+    return _NO_TOOL_CALL
+
+
+def bad_arguments_message(error: str) -> str:
+    """Sent when submit_audit was called with arguments that are not a JSON object."""
+    return _BAD_ARGUMENTS.format(error=error)
+
+
+def unknown_tool_message(name: str) -> str:
+    """Sent when the overseer called a tool that does not exist.
+
+    The name came from the model, so it is truncated before being echoed back.
+    """
+    shown = name if len(name) <= _MAX_ECHOED_NAME else name[:_MAX_ECHOED_NAME] + "..."
+    return _UNKNOWN_TOOL.format(name=shown)
+
+
+def ignored_call_message() -> str:
+    """Sent for each extra tool call beyond the one submit_audit call that is used."""
+    return _IGNORED_CALL
+
+
 def prompt_fingerprint() -> str:
     """Return a short hash of everything the model is shown, across all modes.
 
     Covers both system prompts, both tool schemas (their descriptions are part
-    of the prompt), the user-message template and the retry wording.
+    of the prompt), the user-message template, the retry wording and the
+    format-recovery messages.
     """
     payload = {
         "modes": {
@@ -148,6 +188,7 @@ def prompt_fingerprint() -> str:
         },
         "user_template": _USER_TEMPLATE,
         "retry_suffix": _RETRY_SUFFIX,
+        "format_recovery": [_NO_TOOL_CALL, _BAD_ARGUMENTS, _UNKNOWN_TOOL, _IGNORED_CALL],
     }
     encoded = json.dumps(payload, sort_keys=True, ensure_ascii=True).encode("utf-8")
     return hashlib.sha256(encoded).hexdigest()[:12]

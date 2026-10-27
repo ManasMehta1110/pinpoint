@@ -44,6 +44,7 @@ select = ["E", "F", "W", "I", "B", "UP", "SIM", "RUF"]
 python_version = "3.11"
 strict = true
 files = ["pinpoint", "benchmark", "tests"]
+enable_error_code = ["possibly-undefined"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

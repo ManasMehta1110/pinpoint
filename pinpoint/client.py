@@ -107,8 +107,11 @@ class Completion:
 
         Rebuilt from the standard fields only, so provider extras such as
         reasoning text are never echoed back to an API that may reject them.
+        An assistant turn with neither text nor tool calls gets empty text,
+        since APIs reject a null content with no tool calls.
         """
-        message: dict[str, Any] = {"role": "assistant", "content": self.content}
+        content = self.content if self.content is not None or self.tool_calls else ""
+        message: dict[str, Any] = {"role": "assistant", "content": content}
         if self.tool_calls:
             message["tool_calls"] = [
                 {
