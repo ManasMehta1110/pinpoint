@@ -149,6 +149,21 @@ python -m venv .venv
 - Effort: `reasoning_effort` (Chat Completions), values `minimal` … `max`.
 - Long non-streaming requests return HTTP 504; stream or retry.
 
+**Client (`pinpoint/client.py`)**
+- One `ModelClient` for both providers; `PROVIDERS["baseten"]` and
+  `PROVIDERS["meta"]` differ only in URL, key variable, model id and
+  max-tokens parameter name.
+- Errors are raised `from None` on purpose: a chained SDK exception carries the
+  request, including the `Authorization` header. Never change that.
+- Entry points call `load_env()`; library code never loads `.env` itself.
+
+**Measured on the first real call (Muse Spark Open, Baseten)**
+- Tool calling works: `finish_reason == "tool_calls"`, readable reasoning in
+  `reasoning_content`.
+- About 1,750 prompt tokens per trace (the tool schema counts), about 1,000
+  completion tokens, 4-5 s, about $0.0065. Full 720-trace run about $4.70.
+- Reported limits: 100 requests/min, 2M tokens/min.
+
 **Baseten (Muse Spark Open)**
 - Base URL `https://inference.baseten.co/v1`, OpenAI SDK compatible. Key in
   `BASETEN_API_KEY`.

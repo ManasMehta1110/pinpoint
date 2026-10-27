@@ -43,6 +43,11 @@ history shows when. The full build log is in [DEVLOG.md](DEVLOG.md).
   rule, the way GroundingBench asked. Tests guarantee it differs from
   Pinpoint only in its citation slots, so the comparison isolates their
   effect.
+- **Model client** (`pinpoint/client.py`). One client for Muse Spark Open
+  (via Baseten) and Muse Spark (via the Meta Model API). Every call keeps the
+  full raw response, tool calls, readable reasoning, token usage and timing,
+  so every number Pinpoint reports traces back to a saved model output. The
+  API key never appears in a record, log or error.
 - **Label-free guarantee** (`tests/test_packaging.py`). A test that fails if
   the overseer package ever imports the grader or reads a ground-truth field,
   so Pinpoint provably audits traces without seeing their answers.
