@@ -39,6 +39,7 @@ from pathlib import Path
 from typing import Any
 
 from benchmark.fetch_data import DATA_DIR, TRACE_FILES, sha256_of
+from benchmark.midtrace import DATASET_PATH as MIDTRACE_PATH
 from pinpoint.audit import MODES, check_mode
 from pinpoint.client import DEFAULT_MAX_TOKENS, PROVIDERS, ClientError, ModelClient, load_env
 from pinpoint.overseer import (
@@ -60,6 +61,39 @@ ESTIMATED_USD_PER_TRACE = 0.0065
 
 class RunError(RuntimeError):
     """A run cannot start or continue safely."""
+
+
+@dataclass(frozen=True)
+class LocalFile:
+    """A trace file kept in this repository, rather than fetched into ``data/``."""
+
+    name: str
+    path: Path
+    sha256: str
+
+
+# Pinned when the dataset was pre-registered: committed before any model saw
+# it. Regenerating it must reproduce this hash (tests/test_midtrace.py).
+LOCAL_FILES: tuple[LocalFile, ...] = (
+    LocalFile(
+        name="midtrace.jsonl",
+        path=MIDTRACE_PATH,
+        sha256="2251257216dd10425e26d5fa707c2b5310863cf06af5d3977ed2fc4209cdca8a",
+    ),
+)
+
+
+def data_path(name: str, data_dir: Path) -> Path:
+    """Where the trace file ``name`` lives: in the repo if local, else in ``data_dir``."""
+    local = next((f for f in LOCAL_FILES if f.name == name), None)
+    return local.path if local else data_dir / name
+
+
+def pinned_sha256(name: str) -> str:
+    """The hash a trace file must have before a run may use it."""
+    pins = {spec.name: spec.sha256 for spec in TRACE_FILES}
+    pins.update({f.name: f.sha256 for f in LOCAL_FILES})
+    return pins[name]
 
 
 @dataclass(frozen=True)
@@ -245,7 +279,8 @@ def default_name(args: argparse.Namespace) -> str:
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Run the Pinpoint overseer over a trace file.")
-    parser.add_argument("--data", required=True, choices=[spec.name for spec in TRACE_FILES])
+    names = [spec.name for spec in TRACE_FILES] + [f.name for f in LOCAL_FILES]
+    parser.add_argument("--data", required=True, choices=names)
     parser.add_argument("--mode", default="two_slot", choices=MODES)
     parser.add_argument("--provider", default="baseten", choices=sorted(PROVIDERS))
     parser.add_argument("--citation-retries", type=int, default=DEFAULT_MAX_CITATION_RETRIES)
@@ -260,23 +295,22 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--data-dir", type=Path, default=DATA_DIR)
     args = parser.parse_args(argv)
 
-    spec = next(s for s in TRACE_FILES if s.name == args.data)
-    data_path = args.data_dir / spec.name
-    if not data_path.exists():
-        print(f"error: {data_path} missing; run python -m benchmark.fetch_data", file=sys.stderr)
+    path = data_path(args.data, args.data_dir)
+    sha256 = pinned_sha256(args.data)
+    local = any(f.name == args.data for f in LOCAL_FILES)
+    if not path.exists():
+        fix = "restore it from git" if local else "run python -m benchmark.fetch_data"
+        print(f"error: {path} missing; {fix}", file=sys.stderr)
         return 1
-    if sha256_of(data_path) != spec.sha256:
-        print(
-            f"error: {data_path} does not match the pinned hash; "
-            "run python -m benchmark.fetch_data --force",
-            file=sys.stderr,
-        )
+    if sha256_of(path) != sha256:
+        fix = "restore it from git" if local else "run python -m benchmark.fetch_data --force"
+        print(f"error: {path} does not match the pinned hash; {fix}", file=sys.stderr)
         return 1
 
     provider = PROVIDERS[args.provider]
     config = RunConfig(
-        data_file=spec.name,
-        data_sha256=spec.sha256,
+        data_file=args.data,
+        data_sha256=sha256,
         provider=provider.name,
         model=provider.model,
         mode=args.mode,
@@ -287,7 +321,7 @@ def main(argv: list[str] | None = None) -> int:
         temperature=args.temperature,
         prompt_version=PROMPT_VERSION,
     )
-    records = load_records(data_path)
+    records = load_records(path)
     if args.limit is not None:
         records = records[: args.limit]
     run_dir = args.runs_dir / (args.name or default_name(args))

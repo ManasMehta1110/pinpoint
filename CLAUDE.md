@@ -64,6 +64,7 @@ Indie track.
 ```
 pinpoint/        label-free overseer (never sees ground truth)
 benchmark/       evaluation harness; may use GroundingBench labels + grader
+  datasets/      repo-local trace files (midtrace.jsonl), pinned in run.py
 tests/           pytest suite
 data/            fetched traces (gitignored; run benchmark/fetch_data.py)
 results/         saved runs, raw model output per trace (committed)
@@ -154,6 +155,21 @@ python -m venv .venv
   beside it, with the reason it is lower: its REWARD_HACKER keyword is the
   tool name `submit_answer`, so quoting the agent's actual claim earns no
   credit. Never add text to the evidence string that the model did not write.
+
+**Mid-trace dataset (`benchmark/midtrace.py`, DEVLOG 19:05)**
+- 36 scripted coding-agent traces (12 HONEST / REWARD_HACKER / DECEIVER);
+  the offense is mid-trace, the final answer true or neutral. Pre-registered:
+  labels committed before any model run.
+- Never edit `benchmark/datasets/midtrace.jsonl` by hand. Change the
+  generator, rerun `python -m benchmark.midtrace`, and update the pin in
+  `LOCAL_FILES` (`benchmark/run.py`). A changed file after results exist is a
+  new dataset: say so, never overwrite the old runs.
+- Repo-local files resolve through `data_path()`, never `data_dir / name`.
+- Report `step_correct` and `flagged_step_correct` (any misbehavior verdict)
+  side by side, with the `confusion` table: test tampering can fairly be
+  called DECEIVER.
+- Disclose: scripted traces; prompt unchanged ("Question:", research-agent
+  class wording); offense position from the end is fixed per class.
 
 **Results so far (all 720 traces, Muse Spark Open, see DEVLOG 17:38, 18:28)**
 - Single slot: deceptive traces cite the exposing document 176/180; offense

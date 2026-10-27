@@ -12,7 +12,7 @@ import pytest
 from conftest import LABEL_KEYS, OracleModel
 
 from benchmark import run as run_mod
-from benchmark.fetch_data import TraceFile, sha256_of
+from benchmark.fetch_data import TRACE_FILES, TraceFile, sha256_of
 from benchmark.run import RunConfig, RunError, git_info, load_records, read_done, run
 
 GOOD: dict[str, Any] = {
@@ -347,3 +347,72 @@ def test_cli_reports_a_missing_key(
     argv = ["--data", "eval_traces.jsonl", "--data-dir", str(data_dir), "--runs-dir", str(runs_dir)]
     assert run_mod.main(argv) == 1
     assert "BASETEN_API_KEY is not set" in capsys.readouterr().err
+
+
+# --- trace files kept in the repository ------------------------------------------------
+
+
+@pytest.fixture
+def local(
+    cli: tuple[Path, Path], dataset: tuple[Path, Path], monkeypatch: pytest.MonkeyPatch
+) -> Path:
+    """Register the synthetic data as a repo-local file named local.jsonl."""
+    _, path = dataset
+    pinned = run_mod.LocalFile("local.jsonl", path, sha256_of(path))
+    monkeypatch.setattr(run_mod, "LOCAL_FILES", (pinned,))
+    return path
+
+
+def test_cli_runs_a_local_file_whatever_the_data_dir(
+    cli: tuple[Path, Path], local: Path, tmp_path: Path
+) -> None:
+    from benchmark.grade import grade_run
+
+    _, runs_dir = cli
+    nowhere = tmp_path / "nowhere"
+    argv = ["--data", "local.jsonl", "--data-dir", str(nowhere), "--runs-dir", str(runs_dir)]
+    assert run_mod.main(argv) == 0
+    run_dir = runs_dir / "local-baseten-two_slot-retry2"
+    assert len(saved(run_dir)) == 4
+    config = json.loads((run_dir / "manifest.json").read_text(encoding="utf-8"))["config"]
+    assert config["data_file"] == "local.jsonl"
+    assert config["data_sha256"] == sha256_of(local)
+    # The grader finds it the same way.
+    assert grade_run(run_dir, nowhere)["complete"] is True
+
+
+def test_cli_refuses_a_local_file_that_does_not_match_its_pin(
+    cli: tuple[Path, Path],
+    local: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    _, runs_dir = cli
+    monkeypatch.setattr(
+        run_mod, "LOCAL_FILES", (run_mod.LocalFile("local.jsonl", local, "0" * 64),)
+    )
+    assert run_mod.main(["--data", "local.jsonl", "--runs-dir", str(runs_dir)]) == 1
+    assert "restore it from git" in capsys.readouterr().err
+    assert not runs_dir.exists()
+
+
+def test_cli_refuses_a_missing_local_file(
+    cli: tuple[Path, Path],
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    _, runs_dir = cli
+    gone = run_mod.LocalFile("local.jsonl", tmp_path / "gone.jsonl", "0" * 64)
+    monkeypatch.setattr(run_mod, "LOCAL_FILES", (gone,))
+    assert run_mod.main(["--data", "local.jsonl", "--runs-dir", str(runs_dir)]) == 1
+    assert "missing; restore it from git" in capsys.readouterr().err
+
+
+def test_every_trace_file_has_exactly_one_pin() -> None:
+    names = [spec.name for spec in TRACE_FILES] + [f.name for f in run_mod.LOCAL_FILES]
+    assert len(names) == len(set(names))
+    for name in names:
+        assert len(run_mod.pinned_sha256(name)) == 64
+    with pytest.raises(KeyError):
+        run_mod.pinned_sha256("unknown.jsonl")
