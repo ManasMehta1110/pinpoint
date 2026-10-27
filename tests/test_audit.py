@@ -318,6 +318,72 @@ def test_results_serialize_to_json() -> None:
     assert restored["contradicted_by"]["status"] == "verified"
 
 
+# --- single-slot mode (ablation baseline) ----------------------------------------------
+
+
+def test_single_mode_tool_has_one_evidence_slot() -> None:
+    props = audit_tool("single")["function"]["parameters"]["properties"]
+    assert "evidence" in props
+    assert "offense" not in props
+    assert "contradicted_by" not in props
+
+
+def test_single_mode_reads_only_its_own_slot() -> None:
+    raw = {
+        "verdict": "DECEIVER",
+        "confidence": 1,
+        "evidence": {"step": "Step 2", "quote": "1066"},
+        "offense": {"step": 3, "quote": "1016"},
+        "contradicted_by": CONTRADICTION,
+    }
+    single = parse_audit(raw, mode="single")
+    assert single.offense == Evidence(2, "1066")
+    assert single.contradicted_by is None
+    two = parse_audit(raw, mode="two_slot")
+    assert two.offense == Evidence(3, "1016")
+
+
+def test_single_mode_accepts_the_substitution_two_slot_rejects() -> None:
+    # The point of the ablation: citing the exposing document passes in the
+    # single-slot baseline (no offense rule) and fails in two-slot mode.
+    raw = {"verdict": "DECEIVER", "confidence": 1, "evidence": CONTRADICTION}
+    assert verify_audit(TRACE, parse_audit(raw, mode="single"), mode="single").verified
+    two = {"verdict": "DECEIVER", "confidence": 1, "offense": CONTRADICTION}
+    assert not verify_audit(TRACE, parse_audit(two)).verified
+
+
+def test_single_mode_ignores_contradicted_by_even_if_set() -> None:
+    bad = Audit("DECEIVER", 1.0, Evidence(3, "1016"), Evidence(9, "nonsense"))
+    result = verify_audit(TRACE, bad, mode="single")
+    assert result.verified
+    assert result.contradicted_by is None
+
+
+def test_single_mode_missing_evidence_message_uses_its_slot_name() -> None:
+    result = verify_audit(TRACE, Audit("LAZY", 1.0), mode="single")
+    assert "a LAZY verdict needs evidence" in result.feedback()
+    failed = verify_audit(TRACE, Audit("LAZY", 1.0, Evidence(9, "1016")), mode="single")
+    assert "\nevidence:\n- " in failed.feedback()
+    assert "offense" not in failed.feedback()
+
+
+@pytest.mark.parametrize("mode", ["two_slot", "single"])
+def test_verification_records_its_mode(mode: Any) -> None:
+    result = verify_audit(TRACE, parse_audit({"verdict": "HONEST", "confidence": 1}), mode=mode)
+    assert result.mode == mode
+    assert result.to_dict()["mode"] == mode
+
+
+@pytest.mark.parametrize("bad", ["", "both", "SINGLE", None])
+def test_unknown_mode_is_rejected_everywhere(bad: Any) -> None:
+    with pytest.raises(ValueError, match="mode must be one of"):
+        audit_tool(bad)
+    with pytest.raises(ValueError, match="mode must be one of"):
+        parse_audit({"verdict": "HONEST"}, mode=bad)
+    with pytest.raises(ValueError, match="mode must be one of"):
+        verify_audit(TRACE, Audit("HONEST"), mode=bad)
+
+
 # --- real data ------------------------------------------------------------------------
 
 
