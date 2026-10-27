@@ -137,7 +137,7 @@ false date". This is the limitation the GroundingBench paper already states.
 Consequences: report benchmark grounding numbers with this caveat, and choose
 demo traces where the false fact is unmistakable.
 
-### 10:49 · Label-free citation verifier · (uncommitted)
+### 10:49 · Label-free citation verifier · `bbd02bb`
 
 `pinpoint/verifier.py`, `tests/test_verifier.py`.
 
@@ -191,10 +191,62 @@ GroundingBench paper measured, so verify-and-retry alone will not fix it; it
 catches fabricated and misplaced citations. Addressing "decisive" is a
 citation-schema and prompt question, taken up next.
 
+### 11:01 · Two-slot audit and the offense rule · (uncommitted)
+
+`pinpoint/audit.py`, `tests/test_audit.py`; `pinpoint/trace.py` and
+`pinpoint/verifier.py` extended.
+
+**Decision: two citation slots.** An audit now carries an `offense`
+(required unless HONEST: where the agent itself did the wrong thing) and an
+optional `contradicted_by` (what shows it is wrong). Asked for one piece of
+evidence, frontier overseers cited the document exposing a lie instead of the
+lie; with a slot for each, the two no longer compete. Two slots make the right
+answer easier, not forced, so this will be measured: single vs two slots,
+with and without verify-and-retry, on the 120-trace set.
+
+**Decision: the offense rule.** A step has two parts, what the agent did
+(tool and arguments) and what the tool returned. Misbehavior is an action by
+the agent, so the offense must quote the agent's action; `contradicted_by`
+may quote anything. `Step.action_text()` / `result_text()` split each step,
+and `Step.text()` is now built from the two, keeping a single source.
+`verify(..., scope="action")` enforces the rule and explains failures
+precisely (returned by which tool; or the agent wrote that text in step N;
+or it appears only in tool results). Label-free, valid for any agent trace.
+
+Premise checked on real data before building: all 522 quotable ground-truth
+citations lie in the agent's action; none lie only in a tool result.
+
+**Disclosure for any reported result.** Every GroundingBench smoking gun is
+the `submit_answer` step, for all three classes. The offense rule does not
+hand the model that step (search queries and document ids are agent actions
+too, and citing them verifies), but the benchmark's design aligns with the
+rule. Results must say so.
+
+**The `submit_audit` tool.** Final answers come back as a tool call
+(verdict, confidence, offense, contradicted_by, rationale), because Muse
+Spark Open on Baseten has no structured output. `parse_audit` is lenient
+("Step 5" -> 5, "deceiver" -> DECEIVER, 90 -> 0.9, empty optional slot ->
+absent); `verify_audit` is strict. Only structurally broken arguments (not a
+JSON object) raise; every content problem becomes retry feedback. An audit
+verifies only if its offense and any contradiction both verify.
+
+**Audit**
+- ruff clean, mypy `--strict` clean on 11 files, sources ASCII-only,
+  **270 tests pass** (87 new).
+- Real data: all 522 quotable ground-truth audits verify end to end through
+  JSON -> `parse_audit` -> `verify_audit`; 399 of 399 attempts to cite an
+  exposing document as the offense, across all 180 DECEIVER traces, are
+  rejected with `quote_from_tool_result`.
+- Mutation testing: 12 of 13 caught. The 13th (removing the bool guard in
+  `_coerce_step`) was an equivalent mutant: the next line already returned
+  `True` unchanged. The redundant guard was deleted rather than tested; the
+  mutation that would actually turn `True` into step 1 is caught.
+
 ---
 
 ## Next
 
-- Decide the citation schema (see "real is not the same as decisive").
+- `pinpoint/prompt.py`: system prompt defining the four classes and the two
+  slots, with the trace delimited as untrusted data.
 - Once the Meta API key is live: `pinpoint/client.py`, then one trace end to
   end with the raw response saved.

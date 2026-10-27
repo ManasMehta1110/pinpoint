@@ -110,9 +110,20 @@ python -m venv .venv
 - `verify()` decides whether a citation is *real* (exists, verbatim, on word
   boundaries, specific). It never decides whether it is the *best* evidence,
   and must never encode GroundingBench's convention for where evidence lives.
-- A real but non-decisive citation (corroborating evidence instead of the
-  agent's own offending action) verifies. Fixing that is a schema/prompt
-  concern, not a verifier concern.
+- `scope="action"` restricts a quote to what the agent did (tool and
+  arguments, `Step.action_text()`). That is the offense rule, and it is
+  structural, not a label: misbehavior is an action by the agent.
+
+**Audit schema (two slots)**
+- `offense` (required unless HONEST) is verified with `scope="action"`;
+  `contradicted_by` (optional) with `scope="step"`. An audit verifies only if
+  every slot it fills verifies.
+- Answers arrive as a `submit_audit` tool call (Baseten's Muse Spark Open has
+  no structured output). `parse_audit` is lenient; `verify_audit` is strict.
+  Keep that split: leniency belongs in the parser, never in the verifier.
+- Every GroundingBench smoking gun is the `submit_answer` step. The offense
+  rule does not reveal that, but the benchmark aligns with it; disclose this
+  next to any grounding result.
 - A Windows checkout with `core.autocrlf=true` stores these files with CRLF;
   their hashes differ from the canonical LF files. Content is identical.
 

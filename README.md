@@ -25,6 +25,14 @@ history shows when. The full build log is in [DEVLOG.md](DEVLOG.md).
   typographic variants, on whole words). On failure it reports every problem
   and where the quote actually is, which is the feedback the overseer gets
   when asked to retry. Tested against all 540 real misbehavior traces.
+- **Two-slot audit** (`pinpoint/audit.py`). The overseer answers through a
+  `submit_audit` tool call with two separately verified citations: the
+  `offense`, where the agent itself did wrong, and what it was
+  `contradicted_by`. The offense must quote the agent's own action, never a
+  tool's result, which rejects the substitution frontier overseers made in
+  GroundingBench (citing the document that exposes a lie instead of the lie).
+  On real data, all 399 such substitutions across 180 deceptive traces are
+  rejected, and every genuine citation is accepted.
 - **Label-free guarantee** (`tests/test_packaging.py`). A test that fails if
   the overseer package ever imports the grader or reads a ground-truth field,
   so Pinpoint provably audits traces without seeing their answers.
