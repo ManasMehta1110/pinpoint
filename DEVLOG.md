@@ -284,7 +284,7 @@ to wording.
   trace marker, trace text treated as a template, and the single-slot
   baseline accidentally enforcing the offense rule.
 
-### 16:55 · Model client, first real Meta model call · (uncommitted)
+### 16:55 · Model client, first real Meta model call · `76296a8`, `3713300`
 
 `pinpoint/client.py`, `tests/test_client.py`,
 `results/smoke/first_call_baseten.json`; `httpx` declared as a dependency.
@@ -339,11 +339,73 @@ provider-default reasoning effort; raw record committed for provenance):
   Measure across the full run before changing the prompt. Prompt tokens were
   about double the earlier estimate because the tool schema counts too.
 
+### 17:06 · The overseer loop · (uncommitted)
+
+`pinpoint/overseer.py`, `tests/test_overseer.py`; prompt version 2;
+`results/smoke/overseer_smoke.json`.
+
+Asks for an audit, verifies it, and if a citation fails sends the verifier's
+feedback back as the result of the `submit_audit` call, then asks again.
+
+**Design**
+- **Two retry budgets.** Citation retries (the verify-and-retry
+  intervention, `max_citation_retries`) are separate from format retries
+  (plain-text answers, unknown tools, unreadable arguments:
+  `max_format_retries`). The no-retry ablation sets only the citation budget
+  to 0, so it still gets the same chance to produce a readable answer and the
+  comparison isolates the intervention.
+- **Prompt version 2.** The format nudges are model-visible text, so they live
+  in `prompt.py` and are fingerprinted. Version 1's pin is kept: the first
+  smoke call was made with it. The version guard fired as designed until
+  version 2 was pinned.
+- **Verdict flips are recorded.** A model told its citation failed can escape
+  by switching to HONEST, which needs none. Every attempt's verdict is kept
+  (`verdict_history`, `verdict_changed`) for the benchmark to report.
+- Truncated responses and provider failures end the loop and are recorded,
+  never raised; programming errors are not caught. Every tool call gets a
+  reply, as the protocol requires; extra calls are answered as ignored.
+- Saved attempts omit the request messages (reconstructible from
+  `PROMPT_VERSION`, the trace and earlier followups) so the system prompt is
+  not repeated hundreds of times per run.
+- `client.assistant_message()` now sends empty text, not null, for a turn with
+  neither text nor tool calls; APIs reject the latter.
+
+**Audit**
+- Re-reading found `audit` and `primary` assigned in one branch and used
+  later: correct by control flow, fragile under edits. Enabled mypy's
+  `possibly-undefined` check project-wide; it flagged exactly those two and
+  nothing else. Rewritten so each is always initialised.
+- ruff clean, mypy `--strict` (with `possibly-undefined`) clean on 17 files,
+  **385 tests pass** (31 new), using a scripted stand-in for the model.
+- Mutation testing: 15 of 15 caught, including feedback sent as a user
+  message instead of the tool result, the format and citation budgets being
+  shared, every exception swallowed (hiding bugs), and the model's reasoning
+  echoed back.
+
+**Real-model smoke test** (Muse Spark Open, about $0.10, saved):
+- *Forced retry.* Turn 1 scripted as the substitution (offense = the 1066
+  document); the real model received "that text in step 2 was returned by
+  the read_document tool, not written by the agent" and corrected to step 5,
+  the false claim. Verified. Baseten accepts the tool-result conversation.
+- *Mini run*, first two traces of each class in file order: 8 of 8 verdicts
+  correct, every offense on the ground-truth step, every citation verified on
+  the first attempt, no retries.
+
+**What the smoke test implies (to be tested, not assumed).** No retry
+happened naturally. If that holds at scale, verify-and-retry has little to do
+on this benchmark, and most of the gain over the paper's 0.06% comes from the
+prompt and the two slots. It may also mean the paper's finding does not
+reproduce under this setup: the paper's frontier models had a 3-shot,
+free-text, single-evidence prompt, which is not comparable. The fair test is
+the single-slot ablation on the same model. If single-slot Muse Spark Open
+also grounds near 100%, the finding becomes "grounding failure depends on how
+the overseer is asked", which changes the pitch.
+
 ---
 
 ## Next
 
-- `pinpoint/overseer.py`: audit, verify, retry loop over the client (a failed
-  citation goes back as the tool result, with the verifier's feedback).
 - `benchmark/run.py`: run a mode over a trace file, save every raw response
   keyed by file and line, grade offline with GroundingBench's grader.
+- First real numbers: the 2x2 ablation (single vs two slots, with and without
+  citation retries) on the 120-trace set.

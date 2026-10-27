@@ -128,6 +128,16 @@ python -m venv .venv
   rule). The modes must differ only in their slots, in both the tool and the
   prompt; tests enforce this.
 
+**Overseer loop (`pinpoint/overseer.py`)**
+- Citation retries (`max_citation_retries`) and format retries
+  (`max_format_retries`) are separate budgets. The no-retry ablation sets only
+  the citation budget to 0. Never merge them.
+- Verifier feedback goes back as the `tool` result of the `submit_audit`
+  call, never as a user message. Every tool call must get a reply.
+- Record verdict flips (`verdict_history`); a switch to HONEST after a failed
+  citation may be an escape and must be reported, not hidden.
+- Only `ClientError` is caught; programming errors must surface.
+
 **Prompt rules**
 - Changing any wording the model sees (system prompts, tool schemas, user
   template, retry text) requires bumping `PROMPT_VERSION` and pinning the new

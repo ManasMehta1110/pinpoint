@@ -48,6 +48,13 @@ history shows when. The full build log is in [DEVLOG.md](DEVLOG.md).
   full raw response, tool calls, readable reasoning, token usage and timing,
   so every number Pinpoint reports traces back to a saved model output. The
   API key never appears in a record, log or error.
+- **Verify-and-retry loop** (`pinpoint/overseer.py`). Asks Muse Spark for
+  an audit, checks every citation, and when one fails sends the verifier's
+  exact reason back so the model can correct itself. Every attempt is saved,
+  including whether the verdict changed between attempts. Confirmed with the
+  real model: told that its offense quote "was returned by the read_document
+  tool, not written by the agent", Muse Spark Open moved its citation to the
+  agent's false claim, which then verified.
 - **Label-free guarantee** (`tests/test_packaging.py`). A test that fails if
   the overseer package ever imports the grader or reads a ground-truth field,
   so Pinpoint provably audits traces without seeing their answers.
