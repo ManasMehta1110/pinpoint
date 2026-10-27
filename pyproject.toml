@@ -12,6 +12,7 @@ license = { text = "MIT" }
 authors = [{ name = "Manas Mehta" }]
 dependencies = [
   "openai>=1.40,<3",
+  "httpx>=0.27",
   "python-dotenv>=1.0",
 ]
 
