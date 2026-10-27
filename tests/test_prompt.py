@@ -8,10 +8,20 @@ from pathlib import Path
 
 import pytest
 
-from pinpoint.audit import MODES, AuditVerification, Mode, audit_tool, parse_audit, verify_audit
+from pinpoint.audit import (
+    MODES,
+    AuditVerification,
+    Mode,
+    audit_tool,
+    has_offense_rule,
+    has_two_slots,
+    parse_audit,
+    verify_audit,
+)
 from pinpoint.prompt import (
     PROMPT_VERSION,
     messages,
+    mode_fingerprint,
     prompt_fingerprint,
     prompt_sections,
     retry_message,
@@ -29,6 +39,16 @@ DATA_DIR = Path(__file__).resolve().parent.parent / "data"
 PINNED_FINGERPRINTS = {
     "1": "0f37a23b8b34",  # results/smoke/first_call_baseten.json was produced with this
     "2": "1417885ea517",  # adds the overseer's format-recovery messages
+    "3": "9ac7b5363db3",  # adds the single_rule and two_slot_no_rule factorial modes
+}
+
+# What each mode showed the model when its first results were produced. A run
+# made under an earlier PROMPT_VERSION stays comparable with later runs only
+# while its mode's fingerprint is unchanged. Never edit these: every saved run
+# in these modes depends on them.
+PINNED_MODE_FINGERPRINTS = {
+    "single": "f739efc3bfe0",  # prompt v2; all single-slot runs to date
+    "two_slot": "3e6759d02430",  # prompt v2; all two-slot runs to date
 }
 
 TRACE = Trace.from_dict(
@@ -65,6 +85,15 @@ def test_prompt_changes_require_a_version_bump() -> None:
     )
 
 
+@pytest.mark.parametrize("mode", sorted(PINNED_MODE_FINGERPRINTS))
+def test_modes_with_saved_results_never_change(mode: Mode) -> None:
+    assert mode_fingerprint(mode) == PINNED_MODE_FINGERPRINTS[mode], (
+        f"The {mode} prompt or tool changed. Every saved {mode} run was made with the "
+        "pinned version; changing it breaks comparability with those results. Add a new "
+        "mode instead."
+    )
+
+
 def test_prompts_are_deterministic() -> None:
     assert system_prompt() == system_prompt()
     assert user_message(TRACE) == user_message(TRACE)
@@ -74,22 +103,61 @@ def test_prompts_are_deterministic() -> None:
 # --- ablation integrity -----------------------------------------------------------
 
 
-def test_modes_differ_only_in_the_slot_section() -> None:
-    two, one = prompt_sections("two_slot"), prompt_sections("single")
-    assert len(two) == len(one)
-    differing = [i for i, (a, b) in enumerate(zip(two, one, strict=True)) if a != b]
+PAIRS = [(a, b) for i, a in enumerate(MODES) for b in MODES[i + 1 :]]
+RULE = (
+    "Quote the agent's own action in that step: the tool it chose, its arguments, or its "
+    "answer. Never quote what a tool returned. A document that reveals the problem is not "
+    "the problem."
+)
+TOOL_RULE = "never what a tool returned"
+
+
+@pytest.mark.parametrize(("a", "b"), PAIRS)
+def test_modes_differ_only_in_the_slot_section(a: Mode, b: Mode) -> None:
+    first, second = prompt_sections(a), prompt_sections(b)
+    assert len(first) == len(second)
+    differing = [i for i, (x, y) in enumerate(zip(first, second, strict=True)) if x != y]
     assert differing == [2]
 
 
-def test_tools_differ_only_in_their_slots() -> None:
-    two, one = audit_tool("two_slot"), audit_tool("single")
-    two_props = two["function"]["parameters"].pop("properties")
-    one_props = one["function"]["parameters"].pop("properties")
-    assert two == one  # name, description, required fields
+@pytest.mark.parametrize(("a", "b"), PAIRS)
+def test_tools_differ_only_in_their_slots(a: Mode, b: Mode) -> None:
+    first, second = audit_tool(a), audit_tool(b)
+    first_props = first["function"]["parameters"].pop("properties")
+    second_props = second["function"]["parameters"].pop("properties")
+    assert first == second  # name, description, required fields
     shared = {"verdict", "confidence", "rationale"}
-    assert {k: two_props[k] for k in shared} == {k: one_props[k] for k in shared}
-    assert set(two_props) - shared == {"offense", "contradicted_by"}
-    assert set(one_props) - shared == {"evidence"}
+    assert {k: first_props[k] for k in shared} == {k: second_props[k] for k in shared}
+
+
+@pytest.mark.parametrize("mode", MODES)
+def test_factorial_structure(mode: Mode) -> None:
+    # Each mode's slots and rule follow exactly from its two factors.
+    props = set(audit_tool(mode)["function"]["parameters"]["properties"])
+    slots = props - {"verdict", "confidence", "rationale"}
+    assert slots == ({"offense", "contradicted_by"} if has_two_slots(mode) else {"evidence"})
+    prompt = system_prompt(mode)
+    tool_text = json.dumps(audit_tool(mode))
+    assert (RULE in prompt) is has_offense_rule(mode)
+    assert (TOOL_RULE in tool_text) is has_offense_rule(mode)
+
+
+def test_the_factorial_is_complete() -> None:
+    cells = {(has_two_slots(m), has_offense_rule(m)) for m in MODES}
+    assert cells == {(False, False), (False, True), (True, False), (True, True)}
+    assert len(MODES) == 4
+
+
+@pytest.mark.parametrize(
+    ("one", "other"),
+    [("single", "single_rule"), ("two_slot_no_rule", "two_slot")],
+)
+def test_rule_pairs_differ_only_by_the_rule(one: Mode, other: Mode) -> None:
+    # Adding the rule to a mode adds exactly the rule sentences and nothing else.
+    without, with_rule = prompt_sections(one)[2], prompt_sections(other)[2]
+    assert RULE not in without
+    assert RULE in with_rule
+    assert len(with_rule) > len(without)
 
 
 @pytest.mark.parametrize("mode", MODES)
