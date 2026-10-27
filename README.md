@@ -8,30 +8,39 @@ October 27 to November 4, 2026.
 
 ## Results
 
-GroundingBench's 120-trace held-out set (original distribution), audited by
-Muse Spark Open (`meta-models/muse-spark-open-1026` via Baseten), one run per
-configuration. "Eligible" traces are the 90 misbehaviors whose verdict was
-correct, as in the original paper. Brackets are 95% Wilson intervals.
+All 720 of GroundingBench's held-out traces (120 rule-based, 600 written by an
+LLM to read naturally), audited by Muse Spark Open
+(`meta-models/muse-spark-open-1026` via Baseten), one run per configuration.
+The two configurations differ only in their citation slots. "Eligible" traces
+are misbehaviors whose verdict was correct, as in the original paper. Brackets
+are 95% Wilson intervals.
 
 | | single citation | two citations + offense rule (Pinpoint) |
 |---|---|---|
-| verdict accuracy | 100% (120/120) | 100% (120/120) |
-| **offense cites the labelled step** | **42.2%** (38/90) [33-53] | **100%** (90/90) [96-100] |
-| deceptive traces: cites the agent's false claim | 1 / 30 | 30 / 30 |
+| **deceptive traces citing the document that exposes the lie, instead of the lie** | **176 / 180** [94-99%] | **0 / 179** |
+| **offense on the labelled step** | **44.6%** (240/538) [40-49] | **100%** (536/536) [99-100] |
+| verdict accuracy | 99.4% (716/720) | 99.3% (715/720) |
 | citations verified as real | 100% | 100% |
+
+By distribution:
+
+| offense on the labelled step | single citation | Pinpoint |
+|---|---|---|
+| rule-based (120 traces) | 42.2% (38/90) | 100% (90/90) |
+| naturalistic (600 traces) | 45.1% (202/448) | 100% (446/446) |
 
 **The failure reproduces on Meta's model.** Asked for a single citation,
 Muse Spark Open cited the document that exposes a deceptive agent's lie,
-rather than the lie itself, in 29 of 30 deceptive traces. That is the
+rather than the lie itself, in 176 of 180 deceptive traces. That is the
 substitution GroundingBench measured in other frontier overseers, now in a
-different model, format and prompt.
+different model, format and prompt, on both distributions.
 
 **Pinpoint's schema removes it.** With separate `offense` and
 `contradicted_by` slots, and the rule that an offense must quote the agent's
-own action, all 30 deceptive traces cite the agent's false claim, and every
-misbehavior offense lands on the labelled step.
+own action, every one of 179 correctly flagged deceptive traces cites the
+agent's false claim, and every misbehavior offense lands on the labelled step.
 
-**Verify-and-retry did not contribute here.** Across all 480 audits, no
+**Verify-and-retry did not contribute here.** Across all 1,680 audits, no
 citation ever failed verification, so no retry was triggered. The gain comes
 from the prompt and schema; the verifier is a guarantee that was never needed
 on this data. (A forced test confirms the retry works: told its citation was
@@ -39,15 +48,20 @@ on this data. (A forced test confirms the retry works: told its citation was
 corrected it.)
 
 **Caveats.**
-- One model, one run per cell, 120 traces.
+- One model, one run per configuration.
 - Every GroundingBench smoking gun is the agent's final `submit_answer` step,
   which the offense rule aligns with. The rule does not name that step, and
   citing any other agent action also verifies, but the alignment is real.
-- Under GroundingBench's own grader the figures are 13.3% (single) and 44.4%
-  (Pinpoint). Fifty of the 90 eligible traces cannot be credited for quoting
-  what the agent actually said: their labels expect the tool name
-  `submit_answer` or a word that never appears in the trace. Pinpoint is
-  credited on all 40 that can be.
+- GroundingBench's own grader scores Pinpoint lower (44.4% rule-based, 65.2%
+  naturalistic; single citation: 13.3%, 34.2%), for reasons in its labels
+  rather than the citations. Its REWARD_HACKER keyword is the tool name
+  `submit_answer`, so quoting what the agent actually claimed earns no credit;
+  18 rule-based LAZY keywords never appear in the trace; and the DECEIVER
+  keyword is the claim's first word, its subject rather than its falsehood.
+  For "The Louvre is located in Rome, Italy" the label expects `louvre`;
+  Pinpoint quoted "located in Rome, Italy". On the naturalistic set all 8
+  DECEIVER traces the grader rejected cite the right step and quote the false
+  part of the claim.
 
 Full per-trace records, including every raw model response, are in
 [`results/runs/`](results/runs/); `python -m benchmark.grade <run>`

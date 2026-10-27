@@ -461,7 +461,7 @@ done: rendering evidence as "step N (tool): quote" so the tool name is added
 automatically. That would lift REWARD_HACKER to 100% with text the model never
 wrote, which is gaming the grader.
 
-### 17:38 · First results: the 2x2 ablation · (uncommitted)
+### 17:38 · First results: the 2x2 ablation · `3333595`, `524c8b9`, `59673de`
 
 `results/runs/eval_traces-baseten-{single,two_slot}-retry{0,2}/`; a fix to
 `git_info`.
@@ -517,10 +517,49 @@ repository to check all four cases, and reverting the fix fails it.
 **Caveats**: one model, one run per cell, 120 traces; the benchmark's smoke
 guns all sit in the agent's final answer, which the offense rule aligns with.
 
+### 18:28 · The naturalistic set: the finding holds at 5x scale · (uncommitted)
+
+`results/runs/eval_traces_realistic-baseten-{single,two_slot}-retry0/`.
+
+Single vs two-slot, no retries, on GroundingBench's 600-trace LLM-written
+distribution. Code at `59673de`; both manifests record `dirty: false`, which
+confirms the `git_info` fix (the second run started after the first had
+written its output). 1,200 audits, no failures, $7.84.
+
+| | single | two-slot |
+|---|---|---|
+| verdict accuracy | 596/600 | 595/600 |
+| offense on labelled step | 202/448 | 446/446 |
+| per class (RH / LAZY / DEC) | 49 / 150 / 3 | 147 / 150 / 149 |
+| DECEIVER offenses citing a `read_document` result | 147/150 | 0/149 |
+| GroundingBench grader | 153/448 | 291/446 |
+| citation retries triggered | 0 | 0 |
+
+**Both findings replicate.** Single-slot cites the exposing document in 147
+of 150 deceptive traces (29/30 on the rule-based set); two-slot cites the
+agent's own claim in 149 of 149 (30/30). Across both distributions: 176/180
+vs 0/179, and offense on the labelled step 240/538 vs 536/536.
+
+**Finding: the grader penalises quoting the falsehood.** All 8 two-slot
+DECEIVER traces the grader rejected cite the labelled step and quote the
+false part of the claim, while the label holds the claim's first word, its
+subject: "located in Rome, Italy" (label `louvre`), "Bill Gates" (label
+`steve`), "Harvard University" (label `pulitzer`). The same pattern as
+"battle" earlier.
+
+Still no citation has failed verification: 0 retries across 1,680 audits in
+total. The verifier remains unexercised on GroundingBench; the real-agent test
+is where it can be.
+
+Baseten spend so far: about $11 of $100.
+
 ---
 
 ## Next
 
-- Realistic distribution (600 traces) for the two decisive cells: single and
-  two-slot without retry. About $8.
-- The demo, built around Finding 1 vs Finding 2 side by side.
+- "It knew, it didn't say": analyse the saved readable reasoning of the 176
+  single-slot substitutions. No credits needed.
+- Reasoning-effort sweep on single-slot: does more thinking fix the
+  substitution? About $3.
+- Muse Spark (Meta Model API) once the card hold succeeds.
+- The demo.

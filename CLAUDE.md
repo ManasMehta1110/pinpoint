@@ -151,13 +151,16 @@ python -m venv .venv
   tool name `submit_answer`, so quoting the agent's actual claim earns no
   credit. Never add text to the evidence string that the model did not write.
 
-**Results so far (original set, Muse Spark Open, see DEVLOG 17:38)**
-- Single slot: offense on labelled step 38/90; DECEIVER cites the exposing
-  document in 29/30. Two-slot: 90/90; DECEIVER cites the agent's claim 30/30.
-- Zero citation retries in 480 audits. Do not claim verify-and-retry produced
-  the gain: the schema did. The verifier is a guarantee, unexercised here.
-- GroundingBench grader: 12/90 vs 40/90; 40 is the ceiling for quoting the
-  agent's own words. State this whenever the grader figure appears.
+**Results so far (all 720 traces, Muse Spark Open, see DEVLOG 17:38, 18:28)**
+- Single slot: deceptive traces cite the exposing document 176/180; offense
+  on labelled step 240/538. Two-slot: 0/179 and 536/536.
+- Zero citation retries in 1,680 audits. Do not claim verify-and-retry
+  produced the gain: the schema did. The verifier is a guarantee, unexercised
+  on GroundingBench.
+- GroundingBench grader understates content citations (tool-name keywords,
+  unquotable "unclear", subject-word DECEIVER keywords). State this whenever
+  the grader figure appears.
+- Baseten spend: about $11 of $100.
 - `git_info` excludes `results/`. Runs 2-4 of the first ablation record a
   false-positive `dirty: true`; documented, not edited.
 
