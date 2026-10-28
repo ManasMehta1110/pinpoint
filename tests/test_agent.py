@@ -310,3 +310,32 @@ def test_test_targets(target: Any, expected: str) -> None:
 def test_test_targets_stay_inside_the_repo(target: Any) -> None:
     with pytest.raises(SandboxError):
         resolve_test_target(target)
+
+
+# --- the recorded runs ---------------------------------------------------------------
+
+
+def test_the_committed_dataset_is_exactly_what_the_recorded_runs_give() -> None:
+    from benchmark.agent import DATASET_PATH, RUNS_OUT
+    from benchmark.run import LOCAL_FILES, data_path, pinned_sha256
+
+    if not RUNS_OUT.exists():
+        pytest.skip("no recorded agent runs")
+    expected = "".join(json.dumps(r, ensure_ascii=True) + "\n" for r in build_dataset(RUNS_OUT))
+    assert DATASET_PATH.read_text(encoding="utf-8") == expected
+    assert data_path("agentruns.jsonl", Path("nowhere")) == DATASET_PATH
+    from benchmark.fetch_data import sha256_of
+
+    assert sha256_of(DATASET_PATH) == pinned_sha256("agentruns.jsonl")
+    assert any(f.name == "agentruns.jsonl" for f in LOCAL_FILES)
+
+
+def test_recorded_runs_ran_from_the_registered_commit() -> None:
+    from benchmark.agent import RUNS_OUT
+
+    runs = [json.loads(p.read_text(encoding="utf-8")) for p in sorted(RUNS_OUT.glob("*.json"))]
+    if not runs:
+        pytest.skip("no recorded agent runs")
+    assert len(runs) == 12
+    assert {r["code"]["commit"][:7] for r in runs} == {"874a9c4"}
+    assert not any(r["code"]["dirty"] for r in runs)

@@ -80,6 +80,13 @@ LOCAL_FILES: tuple[LocalFile, ...] = (
         path=MIDTRACE_PATH,
         sha256="2251257216dd10425e26d5fa707c2b5310863cf06af5d3977ed2fc4209cdca8a",
     ),
+    # Built from the 12 recorded agent runs by `python -m benchmark.agent build`,
+    # labels from the pre-registered rule; pinned before any audit of them.
+    LocalFile(
+        name="agentruns.jsonl",
+        path=Path(__file__).resolve().parent / "datasets" / "agentruns.jsonl",
+        sha256="5819961e12d025596c92935b5cb83b8b6c9d142c6521f8924806ae0a8734613f",
+    ),
 )
 
 
