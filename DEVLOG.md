@@ -987,11 +987,28 @@ weights at different precision (it lists an `nvfp4` variant for training), so
 this is "same open weights, different host and serving stack", not an exact
 rerun. If the direction differs, that is the finding.
 
+### 12:23 · Live audits fall back to Fireworks · (uncommitted)
+
+`app/server.py`: `default_overseers()` returns (primary, fallback) from the
+providers whose keys are set, Baseten first. A live audit reruns on the
+fallback only when `unreachable(result)`: status failed and every attempt a
+`client_error`. A model that answered unusably is not retried elsewhere (it
+would only repeat the cost). A fallback uses one audit of the daily
+allowance, not two. Responses now carry `provider`, `model` (from the
+completion that answered) and `fell_back`; `/api/status` reports
+`fallback`. The page names the host and says when it fell back.
+`FIREWORKS_API_KEY` is set in Render.
+
+Tests: key combinations (with a stand-in client class, never a real one),
+fallback on an unreachable host, no fallback when the host answered or
+answered badly, both hosts down, the allowance counted once. 724 pass.
+Mutants killed: fallback on any provider error, fallback on any failure.
+
 ---
 
 ## Next
 
-- Fireworks replication runs, then a Fireworks fallback for live audits.
+- Fireworks replication runs (in progress).
 - Pinger on `/api/status`; check the URL from a phone.
 - Muse Spark once the card hold succeeds.
 - If time is left: offense-slot fix (more than one offense, or the earliest

@@ -275,9 +275,104 @@ def test_budget_resets_at_utc_midnight() -> None:
     assert budget.try_acquire("b") is None
 
 
-def test_default_overseer_is_off_without_a_key(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.delenv("BASETEN_API_KEY", raising=False)
-    assert server.default_overseer() is None
+class KeyedClient:
+    """Stands in for ModelClient: fails like it when the key is unset, never connects."""
+
+    def __init__(self, provider: Any, **_: Any) -> None:
+        import os
+
+        if not os.environ.get(provider.api_key_env, "").strip():
+            raise ClientError(f"{provider.api_key_env} is not set")
+        self.provider = provider
+
+
+@pytest.mark.parametrize(
+    ("keys", "expected"),
+    [
+        ((), (None, None)),
+        (("BASETEN_API_KEY",), ("baseten", None)),
+        (("FIREWORKS_API_KEY",), ("fireworks", None)),
+        (("BASETEN_API_KEY", "FIREWORKS_API_KEY"), ("baseten", "fireworks")),
+    ],
+)
+def test_default_overseers_use_whichever_keys_are_set(
+    monkeypatch: pytest.MonkeyPatch, keys: tuple[str, ...], expected: tuple[str | None, ...]
+) -> None:
+    monkeypatch.setattr(server, "ModelClient", KeyedClient)
+    for name in ("BASETEN_API_KEY", "FIREWORKS_API_KEY"):
+        monkeypatch.delenv(name, raising=False)
+    for name in keys:
+        monkeypatch.setenv(name, "test-key")
+    found = tuple(
+        None if o is None else o.client.provider.name  # type: ignore[attr-defined]
+        for o in server.default_overseers()
+    )
+    assert found == expected
+
+
+# --- falling back to another host ------------------------------------------------------
+
+
+def make_fallback_client(
+    primary: list[Any], fallback: list[Any], limits: Limits | None = None
+) -> TestClient:
+    q = DECEIVER["question"]
+    app = create_app(
+        Overseer(OracleModel({q: primary}), mode="two_slot"),
+        limits,
+        Clock(),
+        fallback=Overseer(OracleModel({q: fallback}), mode="two_slot"),
+    )
+    return TestClient(app)
+
+
+def test_an_unreachable_host_falls_back() -> None:
+    down = ClientError("baseten returned HTTP 503")
+    client = make_fallback_client([down], [GOOD_AUDIT], Limits(daily_cap=5))
+    body = client.post("/api/audit", json={"trace": TRACE}).json()
+    assert body["status"] == "verified" and body["fell_back"] is True
+    assert body["remaining_today"] == 4  # one audit, not two
+    assert "503" not in json.dumps(body)
+
+
+def test_a_reachable_host_is_not_second_guessed() -> None:
+    # An empty fallback script fails the request if the fallback is ever called.
+    body = make_fallback_client([GOOD_AUDIT], []).post("/api/audit", json={"trace": TRACE}).json()
+    assert body["status"] == "verified" and body["fell_back"] is False
+
+
+def test_a_bad_answer_does_not_fall_back() -> None:
+    # The model answered, just not usably: another host would only repeat the cost.
+    client = make_fallback_client(["not json", "not json"], [])
+    body = client.post("/api/audit", json={"trace": TRACE}).json()
+    assert body["status"] == "failed" and body["fell_back"] is False
+
+
+def test_both_hosts_down_is_reported_as_failed() -> None:
+    down = ClientError("down")
+    body = make_fallback_client([down], [down]).post("/api/audit", json={"trace": TRACE}).json()
+    assert body["status"] == "failed" and body["fell_back"] is True
+
+
+def test_status_reports_the_fallback() -> None:
+    assert make_fallback_client([], []).get("/api/status").json()["fallback"] is True
+    assert make_client([]).get("/api/status").json()["fallback"] is False
+
+
+def test_unreachable_needs_every_attempt_to_be_a_provider_error() -> None:
+    from pinpoint.overseer import Attempt, OverseerResult
+
+    def result(*problems: str | None) -> OverseerResult:
+        attempts = tuple(Attempt(i + 1, None, None, None, p) for i, p in enumerate(problems))
+        return OverseerResult("failed", "two_slot", "3", attempts)
+
+    assert server.unreachable(result("client_error")) is True
+    assert server.unreachable(result("bad_arguments", "client_error")) is False
+    assert server.unreachable(result()) is False
+    ok = OverseerResult(
+        "verified", "two_slot", "3", (Attempt(1, None, None, None, "client_error"),)
+    )
+    assert server.unreachable(ok) is False
 
 
 def test_limits_from_the_environment(monkeypatch: pytest.MonkeyPatch) -> None:

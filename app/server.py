@@ -7,7 +7,9 @@ Three things a visitor can do:
   verifier. No model call, so it is free and unlimited apart from size;
 * ``POST /api/audit``: run Pinpoint live on Muse Spark Open. Each audit costs
   about $0.007, so live audits are capped: a daily total for everyone, an
-  hourly number per visitor, and a few at a time.
+  hourly number per visitor, and a few at a time. Baseten serves the model;
+  if it cannot be reached, the same audit runs on Fireworks when that key is
+  set too.
 
 The caps live in memory, so a restart resets them. They are a guard against
 an accidental bill, not a security boundary: the per-visitor cap trusts the
@@ -36,7 +38,7 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
 from app.views import audit_view, trace_view
-from pinpoint.client import PROVIDERS, ClientError, ModelClient
+from pinpoint.client import PROVIDERS, ClientError, ModelClient, Provider
 from pinpoint.overseer import Overseer, OverseerResult
 from pinpoint.prompt import PROMPT_VERSION
 from pinpoint.trace import Trace, TraceError
@@ -165,18 +167,38 @@ def audit_response(trace: Trace, result: OverseerResult) -> dict[str, Any]:
         ),
         "tokens": {"in": tokens_in, "out": tokens_out},
         "cost_usd": round(cost, 5),
-        "model": PROVIDER.model,
+        "provider": None if completion is None else completion.provider,
+        "model": None if completion is None else completion.model,
         "prompt_version": PROMPT_VERSION,
     }
+
+
+def unreachable(result: OverseerResult) -> bool:
+    """True if every attempt failed to reach the provider: worth trying another
+    host. A model that answered badly is not, as another host would only
+    repeat the cost."""
+    return (
+        result.status == "failed"
+        and bool(result.attempts)
+        and all(a.problem == "client_error" for a in result.attempts)
+    )
+
+
+def _model_of(overseer: Overseer | None) -> str:
+    provider = getattr(overseer.client, "provider", None) if overseer is not None else None
+    return provider.model if isinstance(provider, Provider) else PROVIDER.model
 
 
 def create_app(
     overseer: Overseer | None,
     limits: Limits | None = None,
     clock: Callable[[], float] = time.time,
+    *,
+    fallback: Overseer | None = None,
 ) -> FastAPI:
     """The app. ``overseer`` is ``None`` when no API key is configured: the
-    gallery and verifier still work, and live audits say they are off."""
+    gallery and verifier still work, and live audits say they are off.
+    ``fallback`` audits on another host when ``overseer`` cannot be reached."""
     limits = limits or Limits()
     budget = Budget(limits, clock)
     slots = threading.BoundedSemaphore(limits.max_concurrent)
@@ -199,7 +221,8 @@ def create_app(
         return {
             "live": overseer is not None,
             "remaining_today": budget.remaining_today() if overseer is not None else 0,
-            "model": PROVIDER.model,
+            "model": _model_of(overseer),
+            "fallback": fallback is not None,
             "prompt_version": PROMPT_VERSION,
         }
 
@@ -231,9 +254,14 @@ def create_app(
             if refusal is not None:
                 raise HTTPException(429, refusal)
             result = overseer.audit(trace)
+            fell_back = fallback is not None and unreachable(result)
+            if fell_back:
+                assert fallback is not None
+                result = fallback.audit(trace)
         finally:
             slots.release()
         response = audit_response(trace, result)
+        response["fell_back"] = fell_back
         response["remaining_today"] = budget.remaining_today()
         return response
 
@@ -241,17 +269,25 @@ def create_app(
     return app
 
 
-def default_overseer() -> Overseer | None:
-    """Pinpoint on Muse Spark Open, or ``None`` if no key is configured.
+def overseer_for(provider: str) -> Overseer | None:
+    """Pinpoint on Muse Spark Open at ``provider``, or ``None`` if its key is not set.
 
     Shorter timeout and fewer retries than the benchmark: a visitor is
     waiting, so a stuck call should fail in about three minutes at worst.
     """
     try:
-        client = ModelClient(PROVIDER, timeout_s=90, max_retries=1)
+        client = ModelClient(PROVIDERS[provider], timeout_s=90, max_retries=1)
     except ClientError:
         return None
     return Overseer(client, mode="two_slot")
+
+
+def default_overseers() -> tuple[Overseer | None, Overseer | None]:
+    """(primary, fallback): Baseten, then Fireworks, among those with a key."""
+    available = [o for o in (overseer_for("baseten"), overseer_for("fireworks")) if o is not None]
+    primary = available[0] if available else None
+    fallback = available[1] if len(available) > 1 else None
+    return primary, fallback
 
 
 def _limits_from_env() -> Limits:
@@ -268,7 +304,8 @@ def main() -> None:  # pragma: no cover - entry point
     from pinpoint.client import load_env
 
     load_env()
-    app = create_app(default_overseer(), _limits_from_env())
+    primary, fallback = default_overseers()
+    app = create_app(primary, _limits_from_env(), fallback=fallback)
     uvicorn.run(
         app, host=os.environ.get("HOST", "127.0.0.1"), port=int(os.environ.get("PORT", "7860"))
     )

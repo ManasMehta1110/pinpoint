@@ -447,7 +447,10 @@ function renderLive(r) {
     r.attempts + " model call" + (r.attempts === 1 ? "" : "s") +
     (r.citation_retries ? " (" + r.citation_retries + " after verifier feedback)" : "") +
     " · " + r.latency_s + " s · " + r.tokens.in + " tokens in, " + r.tokens.out + " out · about $" +
-    r.cost_usd.toFixed(4) + " · " + r.model + " · prompt v" + r.prompt_version }));
+    r.cost_usd.toFixed(4) + " · " + r.model + " via " + r.provider + " · prompt v" + r.prompt_version }));
+  if (r.fell_back) {
+    out.append(el("p", { class: "note", text: "Baseten could not be reached, so this audit ran on Fireworks: the same open Muse Spark Open model, another host." }));
+  }
   if (r.reasoning) {
     out.append(el("details", {}, el("summary", { text: "The model's reasoning" }), el("pre", { text: r.reasoning })));
   }
