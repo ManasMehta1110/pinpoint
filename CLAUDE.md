@@ -19,7 +19,10 @@ Indie track.
 | Building period | Oct 27 – Nov 4, 2026 (all official times are US Eastern) |
 | Submission deadline | **Wed Nov 4, 9:00 PM ET = Thu Nov 5, 7:30 AM IST.** No late entries. |
 | Submission | public repo + 3-minute demo video + live product |
-| Judging | Impact, Use of Meta AI tooling, Technical depth, Demo (equal weight) |
+| Judging | Stage 1 pass/fail (fits a problem statement, uses Meta's models). Stage 2, 0-10 each: **Impact 30%**, **Use of Meta AI tooling 25%** ("go beyond a basic integration? surface something that surprised even us?"), **Demo 25%** (works live, video genuinely cool), **Technical depth 20%**. Stage 3: top 5 per track, judges watch the videos live. |
+| Problem statement | **Push the Frontier** (software; a new capability; a better way to understand and control a system) |
+| Bonus prizes | **Best Build on Meta Open Weight Models $10K**: flagged in round one; the infrastructure partner verifies from its own records that the project runs on Muse Spark Open or Muse Glimmer. Keep the live demo calling Baseten through judging (Nov 5-8) and name model id and host in the submission. **Most Viral $20K**: post the demo on X, submit the post link on the platform; engagement counted to Nov 8 EOD, so post at submission. **Community Vote $10K**: public gallery, one vote per verified account, opens Nov 9. Best Agentic Use-Case $5K (autonomy of an agent; weak fit). |
+| After the deadline | Judging Nov 5-8; closing ceremony Nov 9, 12:00 PM ET (top 5 per track, live final round); community vote winner Nov 16 |
 
 ## Hard rules
 
