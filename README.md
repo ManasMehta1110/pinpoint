@@ -190,15 +190,22 @@ reproduces every figure above offline.
 Everything below was built during the hackathon; the commit history shows
 when, and [DEVLOG.md](DEVLOG.md) records every decision, bug and result.
 
-- **Demo app** (`app/`). Three views: **Compare** puts a single-citation
+- **Demo site and API** (`app/`). **Compare** puts a single-citation
   overseer and Pinpoint side by side on real traces, highlighting exactly
   what each cited, with the single-citation model's own reasoning quoted;
-  **Audit live** runs Pinpoint on any trace with Muse Spark Open; **Try to
-  fool the verifier** checks any citation you type. Every audit in Compare is
-  a saved model output, and the gallery build fails if an example does not
-  show what its title claims. Live audits are capped per day and per visitor,
-  and fall back from Baseten to Fireworks if Baseten cannot be reached. Run it
-  with `pip install -e ".[app]"` and `python -m app.server`.
+  **Audit live** runs Pinpoint on any trace with Muse Spark Open, optionally
+  next to the usual one-citation overseer on the same trace; **Try to fool the
+  verifier** checks any citation you type. Every audit in Compare is a saved
+  model output, and the gallery build fails if an example does not show what
+  its title claims. Every number on the page is generated from the saved runs
+  (`app/stats.py`), and a test fails if one drifts. `POST /api/audit` serves
+  the same audit to other programs. Live audits are capped per day and per
+  visitor, and fall back from Baseten to Fireworks if Baseten cannot be
+  reached. Run it with `pip install -e ".[app]"` and `python -m app.server`.
+- **Agent-log adapter** (`pinpoint/adapters.py`). Turns an agent's raw log in
+  OpenAI chat format into a trace, so Pinpoint can audit what real agent
+  frameworks record. Tool results stay results and later user messages are
+  never attributed to the agent, so the offense rule still holds.
 - **Verified evaluation data** (`benchmark/fetch_data.py`). Fetches
   GroundingBench's 720 held-out traces from a pinned commit and accepts each
   file only after a SHA-256 check and a trace-count check. Downloads are

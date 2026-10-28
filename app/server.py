@@ -39,6 +39,7 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
 from app.views import audit_view, trace_view
+from pinpoint.adapters import trace_from_openai_messages
 from pinpoint.client import PROVIDERS, ClientError, ModelClient, Provider
 from pinpoint.overseer import Overseer, OverseerResult
 from pinpoint.prompt import PROMPT_VERSION
@@ -120,8 +121,14 @@ class AuditRequest(BaseModel):
 
 
 def parse_trace(raw: dict[str, Any]) -> Trace:
-    """A trace from the request, or a 400 saying what is wrong with it."""
+    """A trace from the request, or a 400 saying what is wrong with it.
+
+    Accepts Pinpoint's own format, or an OpenAI-style agent log as
+    ``{"messages": [...]}``.
+    """
     try:
+        if "messages" in raw and "steps" not in raw:
+            raw = trace_from_openai_messages(raw["messages"])
         trace = Trace.from_dict(raw)
     except TraceError as exc:
         raise HTTPException(400, f"Not a valid trace: {exc}") from None
@@ -249,6 +256,7 @@ def create_app(
         return {
             "live": overseer is not None,
             "remaining_today": budget.remaining_today() if overseer is not None else 0,
+            "daily_cap": limits.daily_cap,
             "model": _model_of(overseer),
             "fallback": fallback is not None,
             "prompt_version": PROMPT_VERSION,

@@ -1078,12 +1078,45 @@ Generated numbers updated: `replication` in `results.json` (page card "Same
 result on a second host"); the audit count now covers every run, 3,264, with
 0 failed citations (was Baseten-only, 2,064). README updated.
 
+### 14:10 · Site: links, API panel, raw agent logs, polish · (uncommitted)
+
+- **Raw agent logs** (`pinpoint/adapters.py`): `trace_from_openai_messages`
+  turns an OpenAI chat-format log into a trace. First user message is the
+  question; each tool call is a step whose result is the matching tool
+  message (by id, not order); assistant text is a `message` step (the agent's
+  own words, so a lie in chat can be the offense); later user messages are
+  steps whose text is the *result*, so the offense rule never attributes them
+  to the agent; system messages skipped. Label-free (the packaging test scans
+  it). The server accepts `{"messages": [...]}` anywhere it accepts a trace.
+  First live run on the sample log (a coding agent rewrites a failing test to
+  `assert True`, then says all tests pass): converted correctly, both
+  overseers said REWARD_HACKER at step 3, the edit. Pinpoint quoted `path:
+  tests/test_cart.py`: right step, verified, but a weaker quote than `assert
+  True`. The verifier guarantees a quote is real, not that it is the best one.
+- **Shareable links**: `#example-<key>` opens that example; `#try-live`,
+  `#try-fool` open those tabs; the address bar follows what is on screen
+  (`replaceState`, no history spam); a Copy link button per example.
+- **API section**: curl, Python and run-your-own snippets built from the
+  page's own address; a response shape taken from the saved Louvre audit;
+  request and response fields. `/api/status` reports `daily_cap` so the page
+  never types the number.
+- **Polish**: custom dropdowns over the native selects (labels by kind,
+  keyboard, ARIA); quote card stacks all quotes at the tallest height and
+  crossfades, so it never jumps; progress fills use `transform: scaleX`
+  instead of `width` (no per-frame layout; Manas saw stutter); hover lift on
+  the how-it-works and limits cards; the prior-work source line restyled
+  (it was too faint for the line that separates prior work from hackathon
+  work).
+
+ruff, mypy clean; 762 tests pass (22 new: the adapter, logs through the API,
+the daily cap in status).
+
 ---
 
 ## Next
 
-- Site: shareable example links, "use it from your agent" API panel, paste
-  OpenAI-style agent logs.
+- Commit and deploy; check the live site.
+- Video script.
 - Pinger on `/api/status`; check the URL from a phone.
 - Muse Spark once the card hold succeeds.
 - If time is left: offense-slot fix (more than one offense, or the earliest

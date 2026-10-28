@@ -32,6 +32,7 @@
       <a href="#results">Results</a>
       <a href="#knew">It knew</a>
       <a href="#try">Try it</a>
+      <a href="#api">API</a>
     </div>
     <div class="nav-actions">
       <button class="btn ghost icon" id="theme" type="button" aria-label="Switch between light and dark theme">
@@ -88,8 +89,9 @@
           <p>correct misbehavior verdicts from <span data-num="prior_work.models">7</span> frontier overseers cited the
             right evidence, while their verdicts were <span data-num="prior_work.accuracy_low">70.8</span>&ndash;<span
             data-num="prior_work.accuracy_high">100</span>% accurate.</p>
-          <div class="src">GroundingBench: prior work by the author, before this hackathon. Pinpoint is the fix,
-            built during it.</div>
+          <div class="src"><span class="prior">Prior work</span>
+            <span>Measured by GroundingBench, built by the author before this hackathon.
+              <b>Pinpoint, the fix, was built during it.</b></span></div>
         </div>
         <div class="contrast">
           <div class="bad reveal d1"><span class="ico">&#x2717;</span>
@@ -109,25 +111,25 @@
       <div class="kicker reveal">How it works</div>
       <h2 class="section-title reveal">Two citations, and a verifier that trusts nothing.</h2>
       <div class="flow">
-        <div class="flow-card reveal">
+        <div class="flow-card lift reveal">
           <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h10"/></svg></div>
           <div class="stepno">01</div><h3>Read the trace</h3>
           <p>Any agent run: the task, every tool call with its result, and the final answer. No answer key ever
             reaches the overseer.</p>
         </div>
-        <div class="flow-card reveal d1">
+        <div class="flow-card lift reveal d1">
           <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="3"/></svg></div>
           <div class="stepno">02</div><h3>Audit with Muse Spark Open</h3>
           <p>The model answers through a <code>submit_audit</code> tool call: a verdict, the <code>offense</code>,
             and what it was <code>contradicted_by</code>.</p>
         </div>
-        <div class="flow-card reveal d2">
+        <div class="flow-card lift reveal d2">
           <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 3l7 3v6c0 4.5-3 7.5-7 9-4-1.5-7-4.5-7-9V6z"/><path d="M9 12l2 2 4-4"/></svg></div>
           <div class="stepno">03</div><h3>Verify every quote</h3>
           <p>Each citation must name a real step and quote it verbatim. The offense must quote the agent's own
             action, never what a tool returned.</p>
         </div>
-        <div class="flow-card reveal d3">
+        <div class="flow-card lift reveal d3">
           <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg></div>
           <div class="stepno">04</div><h3>Show only what is real</h3>
           <p>A failed citation goes back to the model with the reason. Anything still unverified is labelled
@@ -297,8 +299,9 @@
       </div>
 
       <div id="live" role="tabpanel" hidden>
-        <p class="note">Paste any agent trace as JSON, or start from an example, and Pinpoint audits it live with
-          Muse Spark Open. Citations that do not check out against the trace are never shown as findings.
+        <p class="note">Paste an agent trace, or a raw agent log in OpenAI chat format, or start from an example,
+          and Pinpoint audits it live with Muse Spark Open. Citations that do not check out against the trace are
+          never shown as findings.
           <span id="live-status" class="status-ok"></span></p>
         <div class="panel">
           <div class="panel-head"><h4>Agent trace</h4></div>
@@ -371,19 +374,58 @@
     </div>
   </section>
 
+  <!-- API ------------------------------------------------------------------- -->
+  <section class="band" id="api">
+    <div class="wrap">
+      <div class="kicker reveal">Use it from your agent</div>
+      <h2 class="section-title reveal">One HTTP call per agent run.</h2>
+      <p class="section-lead reveal">Send a trace, get back a verdict with citations that have already been checked
+        against it. The public demo allows <span data-live-cap>a limited number of</span> live audits a day; for real
+        use, run your own server with your own Muse Spark Open key.</p>
+      <div class="api-grid">
+        <div class="code-card reveal">
+          <div class="code-head">
+            <div class="code-tabs" role="tablist">
+              <button type="button" role="tab" aria-selected="true" data-code="curl">curl</button>
+              <button type="button" role="tab" aria-selected="false" data-code="python">Python</button>
+              <button type="button" role="tab" aria-selected="false" data-code="self">Run your own</button>
+            </div>
+            <button type="button" class="chip small" id="code-copy">Copy</button>
+          </div>
+          <pre class="code" id="code-body"></pre>
+        </div>
+        <div class="api-side reveal d1">
+          <div class="code-card">
+            <div class="code-head"><span class="code-title">Response, abridged: the saved Louvre audit</span></div>
+            <pre class="code" id="code-response"></pre>
+          </div>
+          <dl class="fields">
+            <dt><code>trace</code></dt><dd><code>question</code>, <code>steps</code> (each <code>tool</code>,
+              <code>args</code>, <code>result</code>), optional <code>claimed_answer</code>. Or an OpenAI-style
+              agent log: <code>{"messages": [...]}</code>.</dd>
+            <dt><code>compare</code></dt><dd>Optional. Also run the usual one-citation overseer; counts as two audits.</dd>
+            <dt><code>status</code></dt><dd><code>verified</code>, <code>unverified</code> (shown, never as a finding),
+              <code>no_finding</code> or <code>failed</code>.</dd>
+            <dt><code>audit</code></dt><dd>Verdict, and each citation's step, quote, verification and character span.</dd>
+          </dl>
+        </div>
+      </div>
+    </div>
+  </section>
+
   <!-- Limits ---------------------------------------------------------------- -->
   <section class="band alt" id="limits">
     <div class="wrap">
       <div class="kicker reveal">Honest limits</div>
       <h2 class="section-title reveal">What this does not show yet.</h2>
       <div class="limits">
-        <div class="card reveal"><h3>One model, test traces</h3>
+        <div class="card lift reveal"><h3>One model, test traces</h3>
           <p>Every result is Muse Spark Open, one run per setup, on benchmark and scripted traces. No recorded
             production agent has been audited yet.</p></div>
-        <div class="card reveal d1"><h3>A bias of its own</h3>
+        <div class="card lift reveal d1"><h3>A bias of its own</h3>
           <p>When an agent tampers with a test and then truthfully says the tests pass, Pinpoint sometimes files
             the misleading claim as the offense and the tampering as the evidence.</p></div>
-        <div class="card reveal d2"><h3>The benchmark's shape</h3>
+        <div class="card lift reveal d2"><h3>The benchmark's shape</h3>
           <p>In GroundingBench the lie is always the agent's final answer, which suits the offense rule. The
             pre-registered mid-trace set was built to test beyond that.</p></div>
       </div>
