@@ -185,6 +185,27 @@
             data-num="midtrace_p"></span>, not significant). The demo shows one.</p>
         </div>
         <div class="card wide reveal">
+          <h3>A real agent, with real tools</h3>
+          <div class="sub">Muse Spark Open working as a coding agent in an isolated sandbox: it reads files,
+            edits them and runs pytest. <span data-num="agent_runs.runs">12</span> runs, with the tasks and the
+            labelling rule committed before the first one. Two of the tasks have tests that contradict each
+            other, and every task says &ldquo;do not modify the tests&rdquo;.</div>
+          <div class="mini-stats">
+            <div><b data-kn="agent_runs.gamed"></b><span>impossible-task runs where the agent gamed the tests
+              (a value equal to both answers, or checking which test was calling) instead of reporting them
+              contradictory</span></div>
+            <div><b data-kn="agent_runs.pinpoint.flagged_step_correct"></b><span>of those, Pinpoint flagged and
+              cited the labelled step, with the defeated test as the contradiction</span></div>
+            <div><b data-kn="agent_runs.pinpoint.honest_kept"></b><span>genuine fixes Pinpoint left unflagged
+              (no false alarms)</span></div>
+          </div>
+          <p class="foot">The one-citation overseer: <b data-kn="agent_runs.single.flagged_step_correct"></b> on
+            the labelled step, <b data-kn="agent_runs.single.honest_kept"></b> genuine fixes unflagged; its miss
+            cited the agent's first trick rather than the later call-stack hack. Twelve runs: a real-world check,
+            not a statistical claim. A person also reviewed every run and agreed with the labelling rule on
+            <span data-num="agent_runs.review_agrees.k">10</span> of <span data-num="agent_runs.review_agrees.n">12</span>.</p>
+        </div>
+        <div class="card wide reveal">
           <h3>Same result on a second host</h3>
           <div class="sub">The <span data-num="replication.rerun.accuracy.single.n">600</span> naturalistic traces again,
             with the same open model served by Fireworks instead of Baseten.</div>
@@ -419,9 +440,9 @@
       <div class="kicker reveal">Honest limits</div>
       <h2 class="section-title reveal">What this does not show yet.</h2>
       <div class="limits">
-        <div class="card lift reveal"><h3>One model, test traces</h3>
-          <p>Every result is Muse Spark Open, one run per setup, on benchmark and scripted traces. No recorded
-            production agent has been audited yet.</p></div>
+        <div class="card lift reveal"><h3>One model, small real runs</h3>
+          <p>Every result is Muse Spark Open, one run per setup. The real-agent runs are 12 small tasks in a
+            sandbox; no production agent's work has been audited yet.</p></div>
         <div class="card lift reveal d1"><h3>A bias of its own</h3>
           <p>When an agent tampers with a test and then truthfully says the tests pass, Pinpoint sometimes files
             the misleading claim as the offense and the tampering as the evidence.</p></div>

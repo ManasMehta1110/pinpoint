@@ -1,0 +1,20 @@
+{
+  "config": {
+    "data_file": "agentruns.jsonl",
+    "data_sha256": "5819961e12d025596c92935b5cb83b8b6c9d142c6521f8924806ae0a8734613f",
+    "provider": "baseten",
+    "model": "meta-models/muse-spark-open-1026",
+    "mode": "single",
+    "max_citation_retries": 0,
+    "max_format_retries": 1,
+    "max_tokens": 16384,
+    "reasoning_effort": null,
+    "temperature": null,
+    "prompt_version": "3"
+  },
+  "created_at": "2026-10-28T10:04:08+00:00",
+  "code": {
+    "commit": "27d765aeaf903e09f8b0bdd877a1c88ffadaf5b3",
+    "dirty": false
+  }
+}

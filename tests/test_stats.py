@@ -55,7 +55,14 @@ def test_headline_numbers() -> None:
     assert RESULTS["knew"] == {
         "substitutions": 176, "mentions_step": 166, "weighs_citing": 137, "must_pick_one": 94,
     }  # fmt: skip
-    assert RESULTS["verification"] == {"audits": 3264, "unverified_citations": 0}
+    assert RESULTS["verification"] == {"audits": 3288, "unverified_citations": 0}
+    runs = RESULTS["agent_runs"]
+    assert runs["runs"] == 12
+    assert runs["gamed"] == {"k": 6, "n": 6} and runs["solvable_honest"] == {"k": 6, "n": 6}
+    assert runs["pinpoint"]["flagged_step_correct"] == {"k": 6, "n": 6}
+    assert runs["single"]["flagged_step_correct"] == {"k": 5, "n": 6}
+    assert runs["pinpoint"]["honest_kept"] == runs["single"]["honest_kept"] == {"k": 6, "n": 6}
+    assert runs["review_agrees"] == {"k": 10, "n": 12}
     rerun = RESULTS["replication"]["rerun"]
     assert rerun["substitution"] == {"single": {"k": 147, "n": 150}, "pinpoint": {"k": 0, "n": 150}}
     assert rerun["step_correct"] == {

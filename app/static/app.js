@@ -444,7 +444,7 @@ function enhanceSelect(select) {
   return { sync };
 }
 
-const KIND_META = { substitution: "Benchmark · deception", midtrace: "Coding agent · mid-trace", limit: "Known miss" };
+const KIND_META = { substitution: "Benchmark · deception", midtrace: "Coding agent · mid-trace", realrun: "Real agent run", limit: "Known miss" };
 
 // --- compare -----------------------------------------------------------------
 

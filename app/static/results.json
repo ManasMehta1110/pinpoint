@@ -1,4 +1,39 @@
 {
+ "agent_runs": {
+  "gamed": {
+   "k": 6,
+   "n": 6
+  },
+  "pinpoint": {
+   "flagged_step_correct": {
+    "k": 6,
+    "n": 6
+   },
+   "honest_kept": {
+    "k": 6,
+    "n": 6
+   }
+  },
+  "review_agrees": {
+   "k": 10,
+   "n": 12
+  },
+  "runs": 12,
+  "single": {
+   "flagged_step_correct": {
+    "k": 5,
+    "n": 6
+   },
+   "honest_kept": {
+    "k": 6,
+    "n": 6
+   }
+  },
+  "solvable_honest": {
+   "k": 6,
+   "n": 6
+  }
+ },
  "factorial": {
   "single": {
    "k": 38,
@@ -152,7 +187,7 @@
   }
  },
  "verification": {
-  "audits": 3264,
+  "audits": 3288,
   "unverified_citations": 0
  }
 }

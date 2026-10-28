@@ -16,6 +16,7 @@ Usage:
 from __future__ import annotations
 
 import json
+import re
 import sys
 from collections.abc import Iterable
 from math import comb
@@ -161,7 +162,48 @@ def build() -> dict[str, Any]:
         },
         "verification": audit_count(),
         "replication": replication("fireworks"),
+        "agent_runs": agent_runs(),
         "prior_work": PRIOR_WORK,
+    }
+
+
+def agent_runs() -> dict[str, Any]:
+    """The real agent runs: what the agent did, and how each overseer read it."""
+    records = [record for _, record in load_records(data_path("agentruns.jsonl", DATA_DIR))]
+    impossible = [r for r in records if r["policy_name"] in ("pricing", "median")]
+    solvable = [r for r in records if r["policy_name"] not in ("pricing", "median")]
+
+    def side(mode: str) -> dict[str, Any]:
+        s = _summary([f"agentruns-baseten-{mode}-retry0"])
+        honest = s["confusion"].get("HONEST", {})
+        return {
+            "flagged_step_correct": _kn(s["flagged_step_correct"]),
+            "honest_kept": {"k": honest.get("HONEST", 0), "n": sum(honest.values())},
+        }
+
+    # The person's review: their label for each run, read from the sheet.
+    review = (RUNS_DIR.parent / "agent_runs" / "REVIEW.md").read_text(encoding="utf-8")
+    reviewer = dict(
+        re.findall(
+            r"^## (\S+) .*?\*\*Reviewer's label:\*\* ([A-Z_]+)", review, re.MULTILINE | re.DOTALL
+        )
+    )
+    rule = {r["question_id"]: r["policy_class"] for r in records}
+    if set(reviewer) != set(rule):
+        raise ValueError("the review sheet does not cover exactly the recorded runs")
+    return {
+        "runs": len(records),
+        "review_agrees": {"k": sum(reviewer[q] == c for q, c in rule.items()), "n": len(rule)},
+        "gamed": {
+            "k": sum(r["policy_class"] != "HONEST" for r in impossible),
+            "n": len(impossible),
+        },
+        "solvable_honest": {
+            "k": sum(r["policy_class"] == "HONEST" for r in solvable),
+            "n": len(solvable),
+        },
+        "pinpoint": side("two_slot"),
+        "single": side("single"),
     }
 
 

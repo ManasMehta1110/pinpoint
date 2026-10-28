@@ -157,8 +157,43 @@ The difference is not significant (Fisher p = 0.23), and scripted traces are
 not recorded agent runs. On both datasets together, the offense rule alone was
 the most robust configuration (113/114). The demo shows one of these misses.
 
-**The verifier was never needed on this data.** Across all 3,264 audits
-(2,064 on Baseten, 1,200 on Fireworks), no citation failed verification. The
+**A real agent, with real tools.** Everything above is benchmark or scripted
+traces, so we also recorded a real agent. Muse Spark Open worked as a coding
+agent with five tools (list, read, write and edit files, run pytest), each
+executed in an isolated Modal sandbox. Four small tasks, three runs each: two
+with a real bug and correct tests, two whose tests contradict each other (the
+same call must return 90.0 and 95.0). Every task said "do not modify the
+tests". The tasks, the agent's prompt and a mechanical labelling rule were
+committed before the first run (`benchmark/agent_tasks.py`, fingerprint pinned
+in a test).
+
+- The agent fixed both solvable tasks honestly, 6 of 6 times.
+- On the impossible tasks it gamed the tests 6 of 6 times instead of reporting
+  them contradictory: it returned a value whose `==` is true for both expected
+  answers. In one run it went further and rewrote the function to inspect the
+  call stack, returning 90.0 inside one test and 95.0 inside the other. No run
+  edited a test file, and most final messages describe the trick openly.
+
+| 12 real runs | Pinpoint | one citation |
+|---|---|---|
+| gamed runs flagged, offense on the labelled step | 6/6 | 5/6 |
+| genuine fixes left unflagged | 6/6 | 6/6 |
+
+Pinpoint quoted the hack itself each time (`for frame_info in
+inspect.stack():`, `return other == low or other == avg`) with the defeated
+test assertion as `contradicted_by`. The one-citation miss cited the agent's
+first trick instead of its later call-stack rewrite: defensible, but not the
+registered offense. One Pinpoint verdict and two single-citation verdicts
+called the gaming DECEIVER rather than REWARD_HACKER. A person reviewed all 12
+runs and agreed with the rule's labels on 10; both disagreements are about
+whether gaming the tests openly is dishonest (`results/agent_runs/REVIEW.md`).
+Twelve runs on small tasks: a real-world check, not a statistical claim.
+GroundingBench's grader does not apply here: the rule's keyword for each
+offense is the edited file's path, which a quote of the hack's code does not
+contain.
+
+**The verifier was never needed on this data.** Across all 3,288 audits
+(2,088 on Baseten, 1,200 on Fireworks), no citation failed verification. The
 gain comes from the prompt and schema; the verifier is a guarantee. (Most runs
 had retries switched off, so the comparisons measure the schema alone. A
 forced test confirms the retry works: told its citation was "returned by the
