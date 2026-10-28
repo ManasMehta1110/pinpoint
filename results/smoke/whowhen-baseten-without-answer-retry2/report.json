@@ -1,0 +1,196 @@
+{
+  "run": "whowhen-baseten-without-answer-retry2",
+  "config": {
+    "dataset": "whowhen",
+    "data_commit": "b2bae5c5b06d681d04ea5e9b63b7a30525c04925",
+    "data_sha256": "e2a8400d3ee899238e18bdcdf6a0df7a40d2d479fb43d1048ba0d0310a876a51",
+    "provider": "baseten",
+    "model": "meta-models/muse-spark-open-1026",
+    "with_answer": false,
+    "max_citation_retries": 2,
+    "max_format_retries": 1,
+    "attribution_version": "1",
+    "limit": 4
+  },
+  "complete": true,
+  "summary": {
+    "Algorithm-Generated": {
+      "exact_verified": {
+        "k": 2,
+        "n": 2,
+        "pct": 100.0,
+        "ci95": [
+          34.2,
+          100.0
+        ]
+      },
+      "exact": {
+        "k": 2,
+        "n": 2,
+        "pct": 100.0,
+        "ci95": [
+          34.2,
+          100.0
+        ]
+      },
+      "lenient": {
+        "k": 2,
+        "n": 2,
+        "pct": 100.0,
+        "ci95": [
+          34.2,
+          100.0
+        ]
+      },
+      "agent": {
+        "k": 2,
+        "n": 2,
+        "pct": 100.0,
+        "ci95": [
+          34.2,
+          100.0
+        ]
+      },
+      "unreachable_labels": 0,
+      "statuses": {
+        "verified": 2,
+        "unverified": 0,
+        "failed": 0
+      }
+    },
+    "Hand-Crafted": {
+      "exact_verified": {
+        "k": 0,
+        "n": 2,
+        "pct": 0.0,
+        "ci95": [
+          0.0,
+          65.8
+        ]
+      },
+      "exact": {
+        "k": 0,
+        "n": 2,
+        "pct": 0.0,
+        "ci95": [
+          0.0,
+          65.8
+        ]
+      },
+      "lenient": {
+        "k": 0,
+        "n": 2,
+        "pct": 0.0,
+        "ci95": [
+          0.0,
+          65.8
+        ]
+      },
+      "agent": {
+        "k": 1,
+        "n": 2,
+        "pct": 50.0,
+        "ci95": [
+          9.5,
+          90.5
+        ]
+      },
+      "unreachable_labels": 0,
+      "statuses": {
+        "verified": 2,
+        "unverified": 0,
+        "failed": 0
+      }
+    }
+  },
+  "citation_retries": 0,
+  "tokens": {
+    "in": 42033,
+    "out": 16250
+  },
+  "cost_usd": 0.12,
+  "paper": {
+    "without_answer": {
+      "Algorithm-Generated": {
+        "random": 19.06,
+        "all-at-once": 13.53,
+        "step-by-step": 15.31,
+        "binary search": 16.59
+      },
+      "Hand-Crafted": {
+        "random": 4.16,
+        "all-at-once": 3.51,
+        "step-by-step": 8.77,
+        "binary search": 6.9
+      }
+    },
+    "with_answer": {
+      "Algorithm-Generated": {
+        "all-at-once": 12.5,
+        "step-by-step": 25.51,
+        "binary search": 23.98
+      },
+      "Hand-Crafted": {
+        "all-at-once": 5.26,
+        "step-by-step": 7.02,
+        "binary search": 6.9
+      }
+    },
+    "reasoning_models_hand_crafted": {
+      "o1 step-by-step": 13.79,
+      "o1 all-at-once": 10.34,
+      "R1 step-by-step": 6.9,
+      "R1 all-at-once": 3.45
+    }
+  },
+  "traces": [
+    {
+      "id": "Algorithm-Generated/2",
+      "subset": "Algorithm-Generated",
+      "status": "verified",
+      "label_step": 3,
+      "predicted_step": 3,
+      "exact": true,
+      "exact_verified": true,
+      "lenient": true,
+      "agent": true,
+      "unreachable": false
+    },
+    {
+      "id": "Algorithm-Generated/1",
+      "subset": "Algorithm-Generated",
+      "status": "verified",
+      "label_step": 1,
+      "predicted_step": 1,
+      "exact": true,
+      "exact_verified": true,
+      "lenient": true,
+      "agent": true,
+      "unreachable": false
+    },
+    {
+      "id": "Hand-Crafted/1",
+      "subset": "Hand-Crafted",
+      "status": "verified",
+      "label_step": 13,
+      "predicted_step": 29,
+      "exact": false,
+      "exact_verified": false,
+      "lenient": false,
+      "agent": true,
+      "unreachable": false
+    },
+    {
+      "id": "Hand-Crafted/2",
+      "subset": "Hand-Crafted",
+      "status": "verified",
+      "label_step": 5,
+      "predicted_step": 39,
+      "exact": false,
+      "exact_verified": false,
+      "lenient": false,
+      "agent": false,
+      "unreachable": false
+    }
+  ]
+}

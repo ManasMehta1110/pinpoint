@@ -185,7 +185,8 @@ python -m venv .venv
 - Only `ClientError` is caught; programming errors must surface.
 
 **Benchmark rules**
-- Only `benchmark/run.py` spends credits. Real runs go in `results/runs/` and
+- Only the benchmark runners (`run.py`, `agent.py`, `whowhen.py`) spend
+  credits. Real runs go in `results/runs/` and
   must start from a committed tree (the manifest records commit and
   `dirty`). Smoke runs go in `results/smoke/`.
 - Never pass labels to the overseer: `Trace.from_dict(record)` is the only
@@ -205,6 +206,20 @@ python -m venv .venv
   `run` refuses a dirty tree; start each real run on its own.
 - Labels come from the mechanical rule; a person's review is reported beside
   them, never substituted.
+
+**Who&When (`pinpoint/attribution.py`, `benchmark/whowhen.py`, DEVLOG Oct 28 23:39)**
+- Independent data (Zhang et al., arXiv 2505.00212, MIT), fetched at pinned
+  commit `b2bae5c` into gitignored `data/whowhen/`; never commit it.
+- Their `mistake_step` is **0-based**; our steps are 1-based. Exact match is
+  `step == label + 1`. The paper's scorer is a substring match (lenient);
+  report it only beside exact match, labelled as theirs.
+- Environment speakers (`ENVIRONMENT`) become tool results, so the mistake
+  cannot cite them; 2 labels point there and count as misses (unreachable).
+- Attribution prompt is separate from the audit modes and pinned
+  (`8a74216b96fe`). Pre-registered: never change it, the conversion or the
+  metrics after runs exist.
+- Compare with the paper only with "different model, same data and metric,
+  one run" stated.
 
 **Mid-trace dataset (`benchmark/midtrace.py`, DEVLOG 19:05)**
 - 36 scripted coding-agent traces (12 HONEST / REWARD_HACKER / DECEIVER);

@@ -1392,12 +1392,87 @@ script, extracted from `action.yml` and run locally with simulated
 table in the summary, `exit-code=1`, error annotation; on a missing log,
 `exit-code=2` and a clear error. Not yet run on GitHub's own runners.
 
+### 23:39 · Who&When: failure attribution on an independent benchmark, pre-registered · (uncommitted)
+
+**Why.** Every dataset so far is GroundingBench (prior work by the author) or
+built here. Who&When (Zhang et al., ICML 2025, arXiv 2505.00212) is someone
+else's: 184 failed runs of LLM multi-agent systems (126 algorithm-generated
+with CaptainAgent, 5-10 messages; 58 hand-crafted with Magentic-One, 5 to
+130 messages, the longest over 330k characters), each with a human label for the agent and
+the step of the decisive mistake. It is exactly Pinpoint's claim, finding the
+step, on independent labels with published baselines.
+
+**Paper baselines, step-level accuracy (%)** (Table 1, GPT-4o; without the
+correct answer / with it):
+
+| | algorithm-generated | hand-crafted |
+|---|---|---|
+| random | 19.06 | 4.16 |
+| all-at-once | 13.53 / 12.50 | 3.51 / 5.26 |
+| step-by-step | 15.31 / 25.51 | 8.77 / 7.02 |
+| binary search | 16.59 / 23.98 | 6.90 / 6.90 |
+
+Table 4 (hand-crafted, reasoning models): o1 10.34 all-at-once, 13.79
+step-by-step; DeepSeek R1 3.45 and 6.90. The paper's scorer counts a step as
+right if the true 0-based step is a substring of the predicted one (true "1"
+matches "10"), and uses all files as the denominator.
+
+**Data.** The authors' MIT-licensed repository at commit `b2bae5c`, fetched by
+`benchmark/whowhen.py fetch`, checked against a pinned combined sha256
+(`e2a8400d…`), kept in gitignored `data/whowhen/`, cited, not committed.
+
+**Design** (`pinpoint/attribution.py`, version 1, fingerprint
+`8a74216b96fe`, pinned in tests). A separate prompt and tool
+(`submit_attribution`), so nothing the audit modes show changes: the run
+failed; cite the decisive mistake (the step where an agent first made the
+error that led to the failure), quoting the agent's own message; optional
+evidence, which may quote a tool; a reason. The same verifier and
+verify-and-retry loop as audits (citation retries 2, format retries 1).
+Each message is a step; messages from the environment (`Computer_terminal`,
+`ComputerTerminal`, `human`) are tool results, so the mistake cannot cite
+them. Two algorithm-generated labels (14 and 59) point at such a message:
+counted as misses, reported as unreachable. Five labels name an agent other
+than the speaker of the labelled step (label noise, reported).
+
+**Runs, each started on its own from a clean tree, Muse Spark Open on
+Baseten, all 184 records:**
+1. Primary: without the correct answer.
+2. Secondary: with the correct answer in the prompt (the paper's other setting).
+
+**Measures, by subset, with Wilson intervals:** exact step match (primary,
+and also verified-only); the paper's lenient substring rule (for direct
+comparison with its tables); agent-level accuracy (paper's rule: labelled
+agent a substring of the cited step's speaker); first-attempt and retry counts;
+cost. Compared with the paper's best GPT-4o method per setting and with o1/R1
+on hand-crafted. Stated with every comparison: a different model; the same
+data and metric; one run.
+
+**Smoke run** (`results/smoke/whowhen-...`, 4 records: Algorithm-Generated 1
+and 2, Hand-Crafted 1 and 2): plumbing works on both subsets including a
+40-second hand-crafted log, all citations verified first try, $0.12. Those 4
+records were seen before registration; nothing was changed after seeing them.
+
+**Audit.** 39 tests (prompt pinned and free of answer-key words; lenient
+parsing; the mistake may not quote environment output; evidence may; retry
+feedback as the tool result; budgets; provider errors and truncation
+recorded; conversion of both subsets; labels never in the trace; exact,
+lenient, verified-only and agent scoring; unreachable flag; pinned fetch with
+atomic writes; the two unreachable ids in the real data; resumable runner;
+dirty tree refused). Bugs caught: loading from an incomplete data folder
+raised a raw FileNotFoundError instead of the "run fetch" message (fixed); a
+test imported a helper from another test file (made self-contained).
+Mutation testing 8/8 killed (off-by-one step mapping, environment treated as
+agents, lenient rule made exact, unverified counted as a verified hit, mistake
+quoting tool output, missing mistake passing, answer always shown, no
+retries); both files restored from backup, byte-identical.
+
 ---
 
 ## Next
 
+- Commit; run the primary, then the secondary; grade; write up.
+- ImpossibleBench.
 - Optional proof on GitHub: a small public demo repository using the Action.
-- Public agent trajectories.
 - Muse Glimmer on a Fireworks on-demand deployment (Manas: check the hourly
   price).
 - Video script.

@@ -1,0 +1,19 @@
+{
+  "config": {
+    "dataset": "whowhen",
+    "data_commit": "b2bae5c5b06d681d04ea5e9b63b7a30525c04925",
+    "data_sha256": "e2a8400d3ee899238e18bdcdf6a0df7a40d2d479fb43d1048ba0d0310a876a51",
+    "provider": "baseten",
+    "model": "meta-models/muse-spark-open-1026",
+    "with_answer": false,
+    "max_citation_retries": 2,
+    "max_format_retries": 1,
+    "attribution_version": "1",
+    "limit": 4
+  },
+  "created_at": "2026-10-28T18:08:13+00:00",
+  "code": {
+    "commit": "af8446f69a71317071348fd2c2b7c35bf4993562",
+    "dirty": true
+  }
+}
