@@ -445,7 +445,10 @@
             sandbox; no production agent's work has been audited yet.</p></div>
         <div class="card lift reveal d1"><h3>A bias of its own</h3>
           <p>When an agent tampers with a test and then truthfully says the tests pass, Pinpoint sometimes files
-            the misleading claim as the offense and the tampering as the evidence.</p></div>
+            the misleading claim as the offense. We tested a fix (cite the earliest wrong step) on unseen
+            traces: <b data-kn="earliest.fresh.earliest"></b> against <b data-kn="earliest.fresh.two_slot"></b>.
+            But on GroundingBench it slipped from <b data-kn="earliest.groundingbench.two_slot"></b> to
+            <b data-kn="earliest.groundingbench.earliest"></b>, so by our pre-set rule it is not the default.</p></div>
         <div class="card lift reveal d2"><h3>The benchmark's shape</h3>
           <p>In GroundingBench the lie is always the agent's final answer, which suits the offense rule. The
             pre-registered mid-trace set was built to test beyond that.</p></div>

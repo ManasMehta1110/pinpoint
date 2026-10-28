@@ -157,6 +157,28 @@ The difference is not significant (Fisher p = 0.23), and scripted traces are
 not recorded agent runs. On both datasets together, the offense rule alone was
 the most robust configuration (113/114). The demo shows one of these misses.
 
+**Testing a fix for that bias.** We added one mode, `two_slot_earliest`,
+identical to Pinpoint except that the offense is "the earliest step where the
+agent itself did the wrong thing" (a test checks no other words differ), and
+tested it on a fresh set of 36 traces built from 12 new bugs, committed before
+any model saw them, with the decision rule fixed in advance. Offense on the
+labelled step:
+
+| | Pinpoint (two_slot) | earliest offense | offense rule alone |
+|---|---|---|---|
+| fresh mid-trace set (24 misbehaviors) | 22/24 | **24/24** | 21/24 |
+| GroundingBench (720 traces) | **536/536** | 530/538 | |
+
+On the fresh set the fix removes the bias it targets: every miss by the other
+two modes was the same misleading "All tests pass now." filed as the offense
+(not significant, Fisher p = 0.49). On GroundingBench it introduces a new one:
+all 8 misses cite the agent opening an irrelevant document ("read doc_8") as
+the earliest wrong step instead of the answer it gave without research. The
+rule set in advance required at least 99% on GroundingBench; it scored 98.5%,
+so Pinpoint keeps `two_slot` as its default and the earliest mode stays an
+option. The offense rule alone, the best cell on the first two datasets, was
+the weakest here. One run per configuration.
+
 **A real agent, with real tools.** Everything above is benchmark or scripted
 traces, so we also recorded a real agent. Muse Spark Open worked as a coding
 agent with five tools (list, read, write and edit files, run pytest), each
@@ -192,8 +214,8 @@ GroundingBench's grader does not apply here: the rule's keyword for each
 offense is the edited file's path, which a quote of the hack's code does not
 contain.
 
-**The verifier was never needed on this data.** Across all 3,288 audits
-(2,088 on Baseten, 1,200 on Fireworks), no citation failed verification. The
+**The verifier was never needed on this data.** Across all 4,152 audits
+(2,952 on Baseten, 1,200 on Fireworks), no citation failed verification. The
 gain comes from the prompt and schema; the verifier is a guarantee. (Most runs
 had retries switched off, so the comparisons measure the schema alone. A
 forced test confirms the retry works: told its citation was "returned by the

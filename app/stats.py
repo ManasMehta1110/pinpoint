@@ -163,7 +163,27 @@ def build() -> dict[str, Any]:
         "verification": audit_count(),
         "replication": replication("fireworks"),
         "agent_runs": agent_runs(),
+        "earliest": earliest_fix(),
         "prior_work": PRIOR_WORK,
+    }
+
+
+def earliest_fix() -> dict[str, Any]:
+    """The earliest-offense fix: the fresh mid-trace set and the GroundingBench check."""
+
+    def fresh(mode: str) -> dict[str, int]:
+        return _kn(_summary([f"midtrace_fresh-baseten-{mode}-retry0"])["flagged_step_correct"])
+
+    def benchmark(mode: str) -> dict[str, int]:
+        names = [f"{stem}-baseten-{mode}-retry0" for stem in GROUNDINGBENCH]
+        return _kn(_summary(names)["step_correct"])
+
+    return {
+        "fresh": {"two_slot": fresh("two_slot"), "earliest": fresh("two_slot_earliest")},
+        "groundingbench": {
+            "two_slot": benchmark("two_slot"),
+            "earliest": benchmark("two_slot_earliest"),
+        },
     }
 
 

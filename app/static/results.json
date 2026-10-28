@@ -34,6 +34,28 @@
    "n": 6
   }
  },
+ "earliest": {
+  "fresh": {
+   "earliest": {
+    "k": 24,
+    "n": 24
+   },
+   "two_slot": {
+    "k": 22,
+    "n": 24
+   }
+  },
+  "groundingbench": {
+   "earliest": {
+    "k": 530,
+    "n": 538
+   },
+   "two_slot": {
+    "k": 536,
+    "n": 536
+   }
+  }
+ },
  "factorial": {
   "single": {
    "k": 38,
@@ -187,7 +209,7 @@
   }
  },
  "verification": {
-  "audits": 3288,
+  "audits": 4152,
   "unverified_citations": 0
  }
 }

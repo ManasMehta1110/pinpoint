@@ -55,7 +55,11 @@ def test_headline_numbers() -> None:
     assert RESULTS["knew"] == {
         "substitutions": 176, "mentions_step": 166, "weighs_citing": 137, "must_pick_one": 94,
     }  # fmt: skip
-    assert RESULTS["verification"] == {"audits": 3288, "unverified_citations": 0}
+    assert RESULTS["verification"] == {"audits": 4152, "unverified_citations": 0}
+    assert RESULTS["earliest"] == {
+        "fresh": {"two_slot": {"k": 22, "n": 24}, "earliest": {"k": 24, "n": 24}},
+        "groundingbench": {"two_slot": {"k": 536, "n": 536}, "earliest": {"k": 530, "n": 538}},
+    }
     runs = RESULTS["agent_runs"]
     assert runs["runs"] == 12
     assert runs["gamed"] == {"k": 6, "n": 6} and runs["solvable_honest"] == {"k": 6, "n": 6}

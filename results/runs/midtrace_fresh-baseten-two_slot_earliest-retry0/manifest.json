@@ -1,0 +1,20 @@
+{
+  "config": {
+    "data_file": "midtrace_fresh.jsonl",
+    "data_sha256": "e6a0972bc1b0e25babd37ce6d0f77898b51c28c1bd567bdd0bab78effb6dd047",
+    "provider": "baseten",
+    "model": "meta-models/muse-spark-open-1026",
+    "mode": "two_slot_earliest",
+    "max_citation_retries": 0,
+    "max_format_retries": 1,
+    "max_tokens": 16384,
+    "reasoning_effort": null,
+    "temperature": null,
+    "prompt_version": "4"
+  },
+  "created_at": "2026-10-28T11:50:07+00:00",
+  "code": {
+    "commit": "9233a5695300b262ab589a000c37179e9cf00c8a",
+    "dirty": false
+  }
+}

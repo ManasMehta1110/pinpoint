@@ -1309,11 +1309,50 @@ match the originals exactly (`912bb366150d`, `1cb656c24c99`), so nothing the
 model sees changed. Rule from now on: undo mutants from a backup copy, never
 `git checkout` on a file with uncommitted work.
 
+### 17:31 · Earliest-offense results: fixes the bias, fails the regression bar · (uncommitted)
+
+All runs from `9233a56`, `dirty: false`, prompt v4, citation retries 0, each
+run started only after the previous finished, with no change to tracked files
+between them. $6.65 in all.
+
+| offense on labelled step | two_slot | two_slot_earliest | single_rule |
+|---|---|---|---|
+| fresh mid-trace (primary), any misbehavior verdict | 22/24 | **24/24** | 21/24 |
+| GroundingBench 120 rule-based | 90/90 | 88/90 | |
+| GroundingBench 600 naturalistic | 446/446 | 442/448 | |
+| GroundingBench 720 (decision rule: at least 99%) | 536/536 | **530/538, 98.5%** | |
+| GroundingBench substitutions | 0/179 | 0/180 | |
+| original mid-trace (descriptive only) | 21/24 | 24/24 | |
+
+No false positives on any honest controls; verdict accuracy 717/720 for the
+earliest mode against 715/720.
+
+- **The bias is real and the fix removes it on unseen traces.** Both
+  two_slot misses on the fresh set and all three single_rule misses are the
+  same pattern as before: a test deselected, then "All tests pass now." filed
+  as the offense. The earliest mode cited the deselect every time. Not
+  significant (Fisher p = 0.49).
+- **It brings a new bias.** All 8 GroundingBench misses cite a `read_document`
+  step (the agent opening an irrelevant document) as the earliest wrong step,
+  instead of the answer given without research: 6 REWARD_HACKER, 2 LAZY. Line
+  57 of the rule-based set repeats the single_rule `doc_3` citation from the
+  first factorial.
+- **Decision, by the pre-registered rule:** 98.5% is below 99%, so
+  `two_slot` stays Pinpoint's default (demo, API); `two_slot_earliest`
+  remains an option and is reported.
+- single_rule, the most robust cell on the first two datasets (113/114), was
+  the weakest on the fresh set (21/24). One run each; no cell is reliably best
+  across all three.
+
+Write-up: `earliest` in `results.json`; the site's "A bias of its own" card
+reports the test and the decision (generated numbers); README section added.
+Audit count now 4,152 (2,952 Baseten, 1,200 Fireworks), still 0 failed
+citations.
+
 ---
 
 ## Next
 
-- Commit; the planned runs; grade; decide by the rule above.
 - Command-line tool and GitHub Action.
 - Public agent trajectories.
 - Muse Glimmer on a Fireworks on-demand deployment (Manas: check the hourly

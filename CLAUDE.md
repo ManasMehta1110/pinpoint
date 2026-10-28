@@ -237,7 +237,14 @@ python -m venv .venv
   substitutions, reasoning mentions the false-answer step 166, weighs citing
   it 137, notes it may give one citation 94. Regex lower bounds, sample read
   by Claude (not an independent annotator): say so when quoting them.
-- Baseten spend: $13.83 of $100 (12 runs).
+- Earliest-offense fix (`two_slot_earliest`, prompt v4, DEVLOG Oct 28
+  17:31): fresh mid-trace 24/24 vs two_slot 22/24 (p = 0.49), but
+  GroundingBench 530/538 vs 536/536, below the pre-set 99% bar. `two_slot`
+  stays the default. New bias: it cites "opened an irrelevant document" as
+  the earliest wrong step. Never present the earliest mode as an improvement
+  without that trade-off.
+- Baseten spend: about $21 of $100 (runs through Oct 28 17:31, plus agent
+  runs and live demo use).
 - `git_info` excludes `results/`. Runs 2-4 of the first ablation record a
   false-positive `dirty: true`; documented, not edited.
 
