@@ -1349,11 +1349,54 @@ reports the test and the decision (generated numbers); README section added.
 Audit count now 4,152 (2,952 Baseten, 1,200 Fireworks), still 0 failed
 citations.
 
+### 23:11 · Command line and GitHub Action · (uncommitted)
+
+**Why.** The judge's question for Impact is whether anyone could use this
+tomorrow. Now a developer can run it on their agent's log in one command, or
+gate pull requests on it in CI.
+
+- `pinpoint/cli.py`, installed as the `pinpoint` command (`[project.scripts]`).
+  `pinpoint audit LOG` reads a Pinpoint trace, an OpenAI chat log (list or
+  `{"messages": ...}`) or a recorded run; reports verdict and citations as
+  text, `--json` or `--markdown`. Exit codes: 0 clean, 1 misbehavior found
+  with verified citations, 2 unreadable log, 3 inconclusive (no key, provider
+  down, or an unverified citation, which is never treated as a finding).
+  Providers: `auto` tries Baseten, Fireworks, Meta, in order of keys present,
+  and falls back when one is unreachable. Keys from the environment or a
+  `.env` in the current directory. `pinpoint verify LOG --step N --quote Q`
+  checks a citation with no model. Label-free (the packaging test scans it).
+- `action.yml` (composite GitHub Action): installs Pinpoint from a git ref,
+  runs `pinpoint audit --markdown`, writes the report to the job summary,
+  sets an `exit-code` output, fails the check on verified misbehavior (and
+  optionally on inconclusive). Inputs reach the shell only through environment
+  variables, so a crafted path cannot inject commands. The report goes to
+  `RUNNER_TEMP`, not the user's checkout. Example workflow in
+  `examples/pinpoint-pr-check.yml`.
+- Site: the API section gains "Command line" and "GitHub Action" tabs. README:
+  a "Use it" section near the top.
+
+**Audit.** 23 CLI tests (every input format, labels never reaching the trace,
+each exit code, provider fallback by key and by outage, named provider only,
+JSON, Markdown escaping of pipes and backticks, single mode, verify without a
+model). They run from an empty temporary folder with `.env` loading disabled,
+since the repo's `.env` holds live keys. A test bug, not a CLI bug: one test
+scripted citations with the wrong step numbers for the converted chat log; the
+CLI rightly rejected them. Mutation testing 7/7 killed (unverified as finding,
+no fallback, unescaped pipes, verify without the offense rule, chat logs not
+converted, missing keys crashing, clean runs exiting 1); restored from a
+backup, byte-identical. Run for real: `pinpoint audit
+results/agent_runs/pricing-1.json` found the offense at step 7 (`inspect.stack()`),
+contradicted by the test assertion at step 3, exit 1. The Action's audit
+script, extracted from `action.yml` and run locally with simulated
+`GITHUB_STEP_SUMMARY`, `GITHUB_OUTPUT` and `RUNNER_TEMP`: failing step, Markdown
+table in the summary, `exit-code=1`, error annotation; on a missing log,
+`exit-code=2` and a clear error. Not yet run on GitHub's own runners.
+
 ---
 
 ## Next
 
-- Command-line tool and GitHub Action.
+- Optional proof on GitHub: a small public demo repository using the Action.
 - Public agent trajectories.
 - Muse Glimmer on a Fireworks on-demand deployment (Manas: check the hourly
   price).

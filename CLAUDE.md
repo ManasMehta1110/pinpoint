@@ -91,7 +91,16 @@ python -m venv .venv
 ./.venv/Scripts/python -m pip install -e ".[app]"
 ./.venv/Scripts/python -m app.server               # demo at http://127.0.0.1:7860
 ./.venv/Scripts/python -m app.examples             # rebuild the gallery JSON
+./.venv/Scripts/pinpoint audit LOG.json            # the CLI (exit 0/1/2/3)
 ```
+
+**CLI and Action (`pinpoint/cli.py`, `action.yml`, DEVLOG Oct 28 23:11)**
+- CLI tests run in a temp folder with `cli._load_dotenv` disabled: the repo's
+  `.env` holds live keys. Pass a scripted `factory`, never a real client.
+- An unverified citation is exit 3 (inconclusive), never exit 1: CI must not
+  fail a build on a citation that did not check out.
+- In `action.yml`, inputs reach the shell only via `env:`; never interpolate
+  `${{ inputs.* }}` into `run:`.
 
 **Demo app (`app/`, DEVLOG 20:31)**
 - Every audit in the gallery is a saved output. Rebuild with

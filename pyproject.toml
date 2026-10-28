@@ -16,6 +16,9 @@ dependencies = [
   "python-dotenv>=1.0",
 ]
 
+[project.scripts]
+pinpoint = "pinpoint.cli:main"
+
 [project.optional-dependencies]
 # GroundingBench (prior work) supplies the evaluation traces and the reference
 # grader, pinned to an exact public commit. Only benchmark/ may use it: the

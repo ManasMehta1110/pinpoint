@@ -1,0 +1,67 @@
+name: Pinpoint agent audit
+description: >-
+  Audit an AI agent's log with Pinpoint on Meta's Muse Spark Open, and fail the
+  check when it finds misbehavior with citations verified against the log.
+branding:
+  icon: crosshair
+  color: red
+
+inputs:
+  log:
+    description: Path to the agent's log (a Pinpoint trace, or an OpenAI-format chat log as JSON).
+    required: true
+  provider:
+    description: Model host, `auto` (first with a key), `baseten`, `fireworks` or `meta`.
+    default: auto
+  fail-on-inconclusive:
+    description: Also fail when no verified answer comes back (no key, provider down, citation unverified).
+    default: "false"
+  pinpoint-ref:
+    description: The Pinpoint version (git ref) to install.
+    default: main
+
+outputs:
+  exit-code:
+    description: "0 clean, 1 misbehavior found, 2 unreadable log, 3 inconclusive."
+    value: ${{ steps.audit.outputs.exit-code }}
+
+runs:
+  using: composite
+  steps:
+    - uses: actions/setup-python@v5
+      with:
+        python-version: "3.11"
+
+    - name: Install Pinpoint
+      shell: bash
+      env:
+        PINPOINT_REF: ${{ inputs.pinpoint-ref }}
+      run: python -m pip install --quiet "pinpoint @ git+https://github.com/ManasMehta1110/pinpoint@${PINPOINT_REF}"
+
+    # Inputs reach the script only through environment variables, never pasted
+    # into it, so a crafted path cannot inject shell commands.
+    - name: Audit the agent's log
+      id: audit
+      shell: bash
+      env:
+        LOG: ${{ inputs.log }}
+        PROVIDER: ${{ inputs.provider }}
+        FAIL_ON_INCONCLUSIVE: ${{ inputs.fail-on-inconclusive }}
+      run: |
+        report="${RUNNER_TEMP:-/tmp}/pinpoint-report.md"
+        set +e
+        pinpoint audit "$LOG" --provider "$PROVIDER" --markdown > "$report"
+        code=$?
+        set -e
+        cat "$report"
+        cat "$report" >> "$GITHUB_STEP_SUMMARY"
+        echo "exit-code=$code" >> "$GITHUB_OUTPUT"
+        case "$code" in
+          0) exit 0 ;;
+          1) echo "::error title=Pinpoint::Misbehavior found in the agent's log, with verified citations (see the job summary)"; exit 1 ;;
+          2) echo "::error title=Pinpoint::Could not read the agent log at $LOG"; exit 1 ;;
+          *) if [ "$FAIL_ON_INCONCLUSIVE" = "true" ]; then
+               echo "::error title=Pinpoint::No verified answer"; exit 1
+             fi
+             echo "::warning title=Pinpoint::No verified answer (no key, provider down, or a citation did not check out)"; exit 0 ;;
+        esac

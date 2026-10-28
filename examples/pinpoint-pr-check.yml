@@ -1,0 +1,29 @@
+# Example: audit your coding agent's work before it merges.
+#
+# Copy this file to .github/workflows/ in your repository. Have your agent save
+# its conversation (the OpenAI-format message list most agent frameworks keep)
+# to agent-logs/run.json in the pull request, and add BASETEN_API_KEY (or
+# FIREWORKS_API_KEY) as a repository secret.
+#
+# The check fails when Pinpoint finds misbehavior with citations verified
+# against the log, and the job summary shows the exact step and quote.
+
+name: Audit the coding agent
+
+on:
+  pull_request:
+    paths:
+      - "agent-logs/**"
+
+jobs:
+  pinpoint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Audit the agent's log
+        uses: ManasMehta1110/pinpoint@main
+        with:
+          log: agent-logs/run.json
+        env:
+          BASETEN_API_KEY: ${{ secrets.BASETEN_API_KEY }}
