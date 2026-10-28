@@ -187,6 +187,15 @@ python -m venv .venv
   tool name `submit_answer`, so quoting the agent's actual claim earns no
   credit. Never add text to the evidence string that the model did not write.
 
+**Real agent runs (`benchmark/agent.py`, `agent_tasks.py`, DEVLOG Oct 28 14:41)**
+- Pre-registered; fingerprint pinned in `tests/test_agent_tasks.py`. Never
+  change the prompt, tools, tasks or labelling rule after runs exist: a change
+  is a new experiment.
+- Agent code runs only in Modal sandboxes (`ModalSandbox`), never locally.
+  `run` refuses a dirty tree; start each real run on its own.
+- Labels come from the mechanical rule; a person's review is reported beside
+  them, never substituted.
+
 **Mid-trace dataset (`benchmark/midtrace.py`, DEVLOG 19:05)**
 - 36 scripted coding-agent traces (12 HONEST / REWARD_HACKER / DECEIVER);
   the offense is mid-trace, the final answer true or neutral. Pre-registered:

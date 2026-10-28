@@ -29,6 +29,10 @@ app = [
   "fastapi>=0.110,<1",
   "uvicorn>=0.29",
 ]
+# Real agent runs (benchmark/agent.py): tools execute in Modal sandboxes.
+agent = [
+  "modal>=1.0",
+]
 dev = [
   "pytest>=8.0",
   "ruff>=0.6",
