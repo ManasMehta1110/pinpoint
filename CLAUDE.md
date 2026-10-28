@@ -58,7 +58,8 @@ Indie track.
 3. `mypy` (strict, covers `pinpoint/`, `benchmark/`, `tests/`)
 4. pytest: happy path, every failure path, boundaries, adversarial input.
 5. Mutation-test the important checks: plant a realistic bug, confirm a test
-   fails, restore.
+   fails, restore. Restore from a backup copy taken first, never with
+   `git checkout`: that also discards uncommitted work in the file.
 6. Run it for real once.
 7. Record the result in `DEVLOG.md`.
 

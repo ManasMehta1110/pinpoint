@@ -87,6 +87,13 @@ LOCAL_FILES: tuple[LocalFile, ...] = (
         path=Path(__file__).resolve().parent / "datasets" / "agentruns.jsonl",
         sha256="5819961e12d025596c92935b5cb83b8b6c9d142c6521f8924806ae0a8734613f",
     ),
+    # Fresh mid-trace set for the earliest-offense test, pre-registered: pinned
+    # and committed before any model saw it.
+    LocalFile(
+        name="midtrace_fresh.jsonl",
+        path=Path(__file__).resolve().parent / "datasets" / "midtrace_fresh.jsonl",
+        sha256="e6a0972bc1b0e25babd37ce6d0f77898b51c28c1bd567bdd0bab78effb6dd047",
+    ),
 )
 
 

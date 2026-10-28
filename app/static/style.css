@@ -44,7 +44,9 @@
 
 * { box-sizing: border-box; }
 html { -webkit-text-size-adjust: 100%; scroll-behavior: smooth; scroll-padding-top: 76px; }
-body { margin: 0; color: var(--ink); font: 15px/1.55 var(--sans); background: var(--bg); overflow-x: hidden; }
+/* `clip`, not `hidden`: it stops sideways overflow without breaking the sticky nav. */
+html, body { overflow-x: clip; }
+body { margin: 0; color: var(--ink); font: 15px/1.55 var(--sans); background: var(--bg); }
 .wrap { max-width: 1200px; margin: 0 auto; padding: 0 20px; }
 h1, h2, h3 { letter-spacing: -0.025em; line-height: 1.12; }
 p { margin: 0 0 10px; }
@@ -77,7 +79,9 @@ code { font-family: var(--mono); font-size: .92em; }
 
 /* --- hero ----------------------------------------------------------------- */
 .hero { position: relative; padding: 64px 0 40px; }
-.hero::before { content: ""; position: absolute; inset: -120px -20% auto; height: 640px; z-index: -1;
+/* The glow stays within the page's width (it used to reach 20% past each edge,
+   which widened the page on phones). */
+.hero::before { content: ""; position: absolute; inset: -120px 0 auto; height: 640px; z-index: -1;
   background: radial-gradient(600px 300px at 20% 30%, var(--bg-grad), transparent 70%),
               radial-gradient(500px 280px at 85% 20%, var(--offense-bg), transparent 70%);
   opacity: .9; }
@@ -101,7 +105,8 @@ code { font-family: var(--mono); font-size: .92em; }
 .demo-bar { display: flex; align-items: center; gap: 6px; padding: 10px 14px; border-bottom: 1px solid var(--line);
   background: var(--panel-2); font-size: 12px; color: var(--faint); }
 .demo-bar i { width: 10px; height: 10px; border-radius: 50%; background: var(--line); display: inline-block; }
-.demo-bar .title { margin-left: 8px; font-family: var(--mono); }
+.demo-bar .title { margin-left: 8px; font-family: var(--mono); min-width: 0; overflow: hidden;
+  text-overflow: ellipsis; white-space: nowrap; }
 .demo-body { padding: 14px 16px 16px; min-height: 330px; }
 .demo-caption { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 12px; font-weight: 650;
   font-size: 14px; margin-bottom: 10px; background: var(--result-bg); color: var(--muted); transition: background .35s, color .35s; }
@@ -461,3 +466,14 @@ footer .wrap { display: flex; justify-content: space-between; gap: 16px; flex-wr
   .wrap { padding: 0 16px; }
   .nav .btn.primary { display: none; }
 }
+
+/* --- narrow screens: nothing may be wider than the screen ------------------ */
+/* Grid and flex children grow to fit their widest content by default; letting
+   them shrink means wide tables and code scroll inside their card instead of
+   widening the page. No effect when everything already fits. */
+.hero-grid > *, .problem-grid > *, .knew-grid > *, .results-grid > *, .api-grid > *,
+.cols > *, .flow > *, .limits > *, .card, .panel, .code-card, .api-side { min-width: 0; }
+/* Long unbroken strings (run names, model ids, file paths) wrap only when they
+   would otherwise overflow. */
+.source code, .meta, .cites q, .fields code, .ex-head h3, .claimed, .rationale, .issue,
+.question, .blurb, .check li, .bar-label span, .mini-stats span { overflow-wrap: anywhere; }
