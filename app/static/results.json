@@ -211,5 +211,55 @@
  "verification": {
   "audits": 4152,
   "unverified_citations": 0
+ },
+ "whowhen": {
+  "algorithm": {
+   "agent": {
+    "k": 82,
+    "n": 126
+   },
+   "best_rule": {
+    "k": 36,
+    "n": 126
+   },
+   "exact": {
+    "k": 57,
+    "n": 126
+   },
+   "exact_with_answer": {
+    "k": 60,
+    "n": 126
+   },
+   "paper_best": 16.59
+  },
+  "corrected": {
+   "k": 15,
+   "n": 16
+  },
+  "hand": {
+   "agent": {
+    "k": 33,
+    "n": 58
+   },
+   "best_rule": {
+    "k": 7,
+    "n": 58
+   },
+   "exact": {
+    "k": 11,
+    "n": 58
+   },
+   "exact_with_answer": {
+    "k": 13,
+    "n": 58
+   },
+   "paper_best": 8.77
+  },
+  "o1": 13.79,
+  "runs": 184,
+  "sent_back": {
+   "k": 16,
+   "n": 184
+  }
  }
 }

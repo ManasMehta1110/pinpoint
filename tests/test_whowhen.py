@@ -119,6 +119,25 @@ def test_a_label_on_environment_output_is_flagged_unreachable() -> None:
     assert not grade_one(record(), result(1))["unreachable"]
 
 
+def test_first_attempt_accuracy_reads_the_first_answer() -> None:
+    corrected = result(1)
+    corrected["attempts"].insert(0, result(3)["attempts"][0])
+    g = grade_one(record(), corrected)
+    assert g["exact"] and not g["exact_first"]
+    regressed = result(3)
+    regressed["attempts"].insert(0, result(1)["attempts"][0])
+    assert grade_one(record(), regressed)["exact_first"]
+    assert not grade_one(record(), result(True))["exact_first"]  # True == 1 in Python
+
+
+def test_fixed_rule_baselines() -> None:
+    # Steps: agent, environment, agent; the label is step 0.
+    out = whowhen.baselines([record(), record(mistake_step=2), record(mistake_step=2)])
+    assert out["first agent message"]["Algorithm-Generated"]["k"] == 1
+    assert out["second agent message"]["Algorithm-Generated"]["k"] == 2  # index 2, not 1
+    assert out["last agent message"]["Algorithm-Generated"]["k"] == 2
+
+
 def test_a_failed_run_scores_nothing() -> None:
     g = grade_one(
         record(), {"status": "failed", "attempts": [{"attribution": None}], "citation_retries": 0}
@@ -221,6 +240,10 @@ def test_run_saves_resumes_and_refuses_another_configuration(tmp_path: Path) -> 
     report = whowhen.grade(tmp_path, records)
     assert report["summary"]["Algorithm-Generated"]["exact"]["k"] == 2
     assert report["complete"] is True
+    assert report["retried"] == {"records": 0, "then_verified": 0}
+    (tmp_path / "report.json").unlink()
+    assert whowhen.report(tmp_path, records) == report
+    assert not (tmp_path / "report.json").exists()  # report() only reads
 
 
 def test_real_runs_refuse_a_dirty_tree(
@@ -230,6 +253,16 @@ def test_real_runs_refuse_a_dirty_tree(
     monkeypatch.setattr(whowhen, "load_records", lambda: [record()])
     assert whowhen.main(["run"], client=Always()) == 1
     assert "clean, committed tree" in capsys.readouterr().err
+
+
+def test_real_runs_are_saved_apart_from_audit_runs(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    monkeypatch.setattr(whowhen, "git_info", lambda: {"commit": "abc", "dirty": False})
+    monkeypatch.setattr(whowhen, "load_records", lambda: [record()])
+    monkeypatch.setattr(whowhen, "ATTRIBUTION_DIR", tmp_path)
+    assert whowhen.main(["run", "--workers", "1"], client=Always()) == 0
+    assert (tmp_path / "whowhen-baseten-without-answer-retry2" / "results.jsonl").is_file()
 
 
 def test_the_papers_numbers_are_the_published_ones() -> None:

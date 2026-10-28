@@ -257,12 +257,48 @@ GroundingBench's grader does not apply here: the rule's keyword for each
 offense is the edited file's path, which a quote of the hack's code does not
 contain.
 
-**The verifier was never needed on this data.** Across all 4,152 audits
-(2,952 on Baseten, 1,200 on Fireworks), no citation failed verification. The
-gain comes from the prompt and schema; the verifier is a guarantee. (Most runs
-had retries switched off, so the comparisons measure the schema alone. A
-forced test confirms the retry works: told its citation was "returned by the
-read_document tool, not written by the agent", the model corrected it.)
+**Someone else's benchmark: which step broke the run?** Everything above
+uses GroundingBench (our prior work) or data built here. Who&When (Zhang et
+al., ICML 2025, [arXiv 2505.00212](https://arxiv.org/abs/2505.00212)) is
+independent: 184 failed runs of LLM multi-agent systems, each labelled by
+people with the agent and the step where the run first went wrong. 126 come
+from CaptainAgent teams (5-10 messages), 58 from Magentic-One (5-130
+messages, the longest over 330k characters). Pinpoint read each log with its
+own attribution prompt (cite the decisive mistake, quoting the agent's own
+message; verified and retried like every audit) and without the correct
+answer. Settings and metrics were committed before the runs
+(`benchmark/whowhen.py`).
+
+| exact step | Pinpoint (Muse Spark Open) | best fixed rule | paper's best (GPT-4o) | paper's random |
+|---|---|---|---|---|
+| algorithm-generated (126) | **45.2%** (57/126) [37-54] | 28.6% (always the 2nd agent message) | 16.59% | 19.06% |
+| hand-crafted (58) | **19.0%** (11/58) [11-31] | 12.1% (always the last agent message) | 8.77% (o1: 13.79%) | 4.16% |
+
+- A fixed rule never reads the messages, and the best one was picked after
+  looking at the labels, so it is a generous floor. On the algorithm-generated
+  runs it already beats every method in the paper; we show it so the
+  comparison is not flattering.
+- The paper's figures are its own (GPT-4o; o1 from its reasoning-model
+  table), not reruns: same data and metric, different model, one run each.
+- Given the correct answer, as in the paper's other setting: 47.6% (60/126)
+  and 22.4% (13/58); the paper's best GPT-4o: 25.51% and 7.02%.
+- Under the paper's own scorer, which counts a true step 1 as matching a
+  predicted 10, Pinpoint scores 45.2% and 25.9%. Agent-level accuracy: 65.1%
+  and 56.9%.
+- 5 runs gave no usable answer (4 ran out of tokens while reasoning, 1 never
+  called the tool) and count as misses, as do 2 labels on messages from the
+  environment, which Pinpoint may not cite as an agent's mistake.
+
+**The verifier earned its keep on real logs.** On GroundingBench and our own
+traces it never had to step in: across all 4,152 audits (2,952 on Baseten,
+1,200 on Fireworks), no citation failed verification, so the gains there come
+from the prompt and schema (most of those runs had retries switched off, so
+the comparisons measure the schema alone). On Who&When it did. Without the answer, 16 of 184
+first answers cited something that did not check out: 8 quotes were not in
+the cited step, 8 were too vague or too long. Sent back with the reason, 15
+were corrected; one stayed unverified and is reported as such. Accuracy was
+the same on the first answers; what retries bought is that every citation
+shown is real.
 
 **Caveats.**
 - One model, one run per configuration per host (the naturalistic comparison
@@ -282,8 +318,11 @@ read_document tool, not written by the agent", the model corrected it.)
   part of the claim.
 
 Full per-trace records, including every raw model response, are in
-[`results/runs/`](results/runs/); `python -m benchmark.grade <run>`
-reproduces every figure above offline.
+[`results/runs/`](results/runs/) and, for Who&When,
+[`results/attribution/`](results/attribution/); `python -m benchmark.grade
+<run>` and `python -m benchmark.whowhen grade <run>` reproduce every figure
+above offline (Who&When's data is fetched from the authors' repository at a
+pinned commit: `python -m benchmark.whowhen fetch`).
 
 ## How it's built
 

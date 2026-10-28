@@ -12,6 +12,7 @@ from fastapi.testclient import TestClient
 from app import stats
 from app.server import STATIC_DIR, create_app
 from app.stats import fisher_two_sided
+from benchmark import whowhen
 from benchmark.fetch_data import DATA_DIR
 
 PAGE = (STATIC_DIR / "index.html").read_text(encoding="utf-8")
@@ -31,6 +32,8 @@ def need_data() -> None:
     for name in ("eval_traces.jsonl", "eval_traces_realistic.jsonl"):
         if not (DATA_DIR / name).exists():
             pytest.skip(f"{name} not fetched; run python -m benchmark.fetch_data")
+    if not whowhen.RAW_DIR.exists():
+        pytest.skip("Who&When not fetched; run python -m benchmark.whowhen fetch")
 
 
 @pytest.mark.usefixtures("need_data")
@@ -67,6 +70,17 @@ def test_headline_numbers() -> None:
     assert runs["single"]["flagged_step_correct"] == {"k": 5, "n": 6}
     assert runs["pinpoint"]["honest_kept"] == runs["single"]["honest_kept"] == {"k": 6, "n": 6}
     assert runs["review_agrees"] == {"k": 10, "n": 12}
+    ww = RESULTS["whowhen"]
+    assert ww["runs"] == 184
+    assert ww["algorithm"]["exact"] == {"k": 57, "n": 126}
+    assert ww["hand"]["exact"] == {"k": 11, "n": 58}
+    assert ww["algorithm"]["best_rule"] == {"k": 36, "n": 126}  # the second agent message
+    assert ww["hand"]["best_rule"] == {"k": 7, "n": 58}  # the last agent message
+    assert ww["algorithm"]["exact_with_answer"] == {"k": 60, "n": 126}
+    assert ww["hand"]["exact_with_answer"] == {"k": 13, "n": 58}
+    paper = (ww["algorithm"]["paper_best"], ww["hand"]["paper_best"], ww["o1"])
+    assert paper == (16.59, 8.77, 13.79)
+    assert ww["sent_back"] == {"k": 16, "n": 184} and ww["corrected"] == {"k": 15, "n": 16}
     rerun = RESULTS["replication"]["rerun"]
     assert rerun["substitution"] == {"single": {"k": 147, "n": 150}, "pinpoint": {"k": 0, "n": 150}}
     assert rerun["step_correct"] == {

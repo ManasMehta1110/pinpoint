@@ -41,7 +41,7 @@ from typing import Any
 
 from benchmark.fetch_data import DATA_DIR
 from benchmark.grade import PRICES, wilson
-from benchmark.run import REPO_ROOT, RUNS_DIR, git_info
+from benchmark.run import REPO_ROOT, git_info
 from pinpoint.attribution import ATTRIBUTION_VERSION, AttributionResult, Attributor
 from pinpoint.client import PROVIDERS, ClientError, ModelClient, load_env
 from pinpoint.overseer import CompletionSource
@@ -55,6 +55,9 @@ SPEAKER_KEY = {"Algorithm-Generated": "name", "Hand-Crafted": "role"}
 COMBINED_SHA256 = "e2a8400d3ee899238e18bdcdf6a0df7a40d2d479fb43d1048ba0d0310a876a51"
 RAW_DIR = DATA_DIR / "whowhen"
 SMOKE_DIR = REPO_ROOT / "results" / "smoke"
+# Not results/runs: everything there is an audit run, and code that reads
+# every run (the page's audit count, citation-span checks) relies on that.
+ATTRIBUTION_DIR = REPO_ROOT / "results" / "attribution"
 
 # Speakers that are the environment, not agents: their messages are results.
 ENVIRONMENT = frozenset({"Computer_terminal", "ComputerTerminal", "human"})
@@ -261,6 +264,14 @@ def _final(result: dict[str, Any]) -> dict[str, Any] | None:
     return readable[-1] if readable else None
 
 
+def _step(attempt: dict[str, Any] | None) -> int | None:
+    """The mistake step an attempt cited, if it is a usable integer."""
+    if attempt is None:
+        return None
+    step = (attempt["attribution"].get("mistake") or {}).get("step")
+    return step if isinstance(step, int) and not isinstance(step, bool) else None
+
+
 def grade_one(record: dict[str, Any], result: dict[str, Any]) -> dict[str, Any]:
     """Scored three ways: exact step (ours), the paper's lenient rule, and agent."""
     final = _final(result)
@@ -273,14 +284,15 @@ def grade_one(record: dict[str, Any], result: dict[str, Any]) -> dict[str, Any]:
         "predicted_step": None,
         "exact": False,
         "exact_verified": False,
+        "exact_first": False,
         "lenient": False,
         "agent": False,
         "unreachable": record["steps"][label0]["result"] is not None,
     }
-    if final is None or not final["attribution"].get("mistake"):
-        return out
-    step = final["attribution"]["mistake"].get("step")
-    if not isinstance(step, int) or isinstance(step, bool):
+    first = next((a for a in result["attempts"] if a.get("attribution") is not None), None)
+    out["exact_first"] = _step(first) == label0 + 1
+    step = _step(final)
+    if step is None:
         return out
     out["predicted_step"] = step
     out["exact"] = step == label0 + 1
@@ -289,6 +301,29 @@ def grade_one(record: dict[str, Any], result: dict[str, Any]) -> dict[str, Any]:
     out["lenient"] = str(label0) in str(step - 1)
     speaker = record["steps"][step - 1]["tool"] if 1 <= step <= len(record["steps"]) else ""
     out["agent"] = record["mistake_agent"] in speaker
+    return out
+
+
+# Fixed rules that never read the messages, as a floor for any method.
+BASELINES: dict[str, Callable[[list[int]], int]] = {
+    "first agent message": lambda agent: agent[0],
+    "second agent message": lambda agent: agent[1] if len(agent) > 1 else -1,
+    "last agent message": lambda agent: agent[-1],
+}
+
+
+def baselines(records: Sequence[dict[str, Any]]) -> dict[str, dict[str, dict[str, Any]]]:
+    """Exact-step accuracy of each fixed rule, by subset."""
+    out: dict[str, dict[str, dict[str, Any]]] = {}
+    for name, rule in BASELINES.items():
+        out[name] = {}
+        for subset in SUBSETS:
+            rows = [r for r in records if r["subset"] == subset]
+            hits = 0
+            for r in rows:
+                agent = [i for i, s in enumerate(r["steps"]) if s["result"] is None]
+                hits += rule(agent) == r["mistake_step"]
+            out[name][subset] = _rate(hits, len(rows))
     return out
 
 
@@ -303,6 +338,14 @@ def _rate(k: int, n: int) -> dict[str, Any]:
 
 
 def grade(run_dir: Path, records: Sequence[dict[str, Any]]) -> dict[str, Any]:
+    """Score a run and save the report beside it."""
+    out = report(run_dir, records)
+    (run_dir / "report.json").write_text(json.dumps(out, indent=2) + "\n", encoding="utf-8")
+    return out
+
+
+def report(run_dir: Path, records: Sequence[dict[str, Any]]) -> dict[str, Any]:
+    """Score a run; writes nothing."""
     by_id = {r["id"]: r for r in records}
     saved = [
         json.loads(line)
@@ -325,25 +368,31 @@ def grade(run_dir: Path, records: Sequence[dict[str, Any]]) -> dict[str, Any]:
         n = len(rows)
         summary[subset] = {
             metric: _rate(sum(g[metric] for g in rows), n)
-            for metric in ("exact_verified", "exact", "lenient", "agent")
+            for metric in ("exact_verified", "exact", "exact_first", "lenient", "agent")
         }
         summary[subset]["unreachable_labels"] = sum(g["unreachable"] for g in rows)
         summary[subset]["statuses"] = {
             s: sum(g["status"] == s for g in rows) for s in ("verified", "unverified", "failed")
         }
-    report = {
+    return {
         "run": run_dir.name,
         "config": json.loads((run_dir / "manifest.json").read_text(encoding="utf-8"))["config"],
         "complete": len(saved) == len(records),
         "summary": summary,
         "citation_retries": sum(s["result"]["citation_retries"] for s in saved),
+        "retried": {
+            "records": sum(s["result"]["citation_retries"] > 0 for s in saved),
+            "then_verified": sum(
+                s["result"]["citation_retries"] > 0 and s["result"]["status"] == "verified"
+                for s in saved
+            ),
+        },
         "tokens": {"in": tokens_in, "out": tokens_out},
         "cost_usd": round((tokens_in * price_in + tokens_out * price_out) / 1e6, 2),
         "paper": PAPER,
+        "baselines": baselines(records),
         "traces": graded,
     }
-    (run_dir / "report.json").write_text(json.dumps(report, indent=2) + "\n", encoding="utf-8")
-    return report
 
 
 def render(report: dict[str, Any]) -> str:
@@ -407,7 +456,7 @@ def main(argv: list[str] | None = None, client: CompletionSource | None = None) 
             records = [r for pair in zip(*by_subset, strict=False) for r in pair][: args.limit]
         setting = "with-answer" if args.with_answer else "without-answer"
         name = f"whowhen-baseten-{setting}-retry{args.citation_retries}"
-        run_dir = (SMOKE_DIR if args.smoke else RUNS_DIR) / name
+        run_dir = (SMOKE_DIR if args.smoke else ATTRIBUTION_DIR) / name
         if client is None:
             load_env()
             client = ModelClient(PROVIDERS["baseten"], timeout_s=300, max_retries=3)

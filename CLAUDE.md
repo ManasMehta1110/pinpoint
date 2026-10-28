@@ -72,6 +72,8 @@ benchmark/       evaluation harness; may use GroundingBench labels + grader
 tests/           pytest suite
 data/            fetched traces (gitignored; run benchmark/fetch_data.py)
 results/         saved runs, raw model output per trace (committed)
+  runs/          audit runs only: code that reads every run assumes it
+  attribution/   Who&When attribution runs (a different result format)
 app/             demo web app: server.py (API, caps), static/ (page, gallery)
 ```
 
@@ -220,6 +222,9 @@ python -m venv .venv
   metrics after runs exist.
 - Compare with the paper only with "different model, same data and metric,
   one run" stated.
+- Real runs save to `results/attribution/`, never `results/runs/`. A mutant
+  or test that redirects output must point at a temp folder, never a real
+  results path.
 
 **Mid-trace dataset (`benchmark/midtrace.py`, DEVLOG 19:05)**
 - 36 scripted coding-agent traces (12 HONEST / REWARD_HACKER / DECEIVER);
@@ -246,7 +251,15 @@ python -m venv .venv
   ambiguity, not a capability gap.
 - Zero citation retries in 1,920 audits. Do not claim verify-and-retry
   produced the gain: the schema did. The verifier is a guarantee, unexercised
-  on GroundingBench.
+  on GroundingBench. It was exercised on Who&When (16/184 first answers sent
+  back, 15 corrected), but accuracy was identical on first answers: retries
+  buy real citations, not accuracy.
+- Who&When (DEVLOG Oct 29 00:15), exact step, without the answer:
+  algorithm-generated 57/126 (45.2%), hand-crafted 11/58 (19.0%); with it
+  60/126, 13/58. Paper's best GPT-4o 16.59 / 8.77, o1 13.79 (hand-crafted).
+  Always state the fixed-rule floor beside them (36/126 second agent message,
+  7/58 last agent message, picked with the labels): it already beats the
+  paper's methods on algorithm-generated runs.
 - GroundingBench grader understates content citations (tool-name keywords,
   unquotable "unclear", subject-word DECEIVER keywords). State this whenever
   the grader figure appears.
@@ -267,8 +280,8 @@ python -m venv .venv
   stays the default. New bias: it cites "opened an irrelevant document" as
   the earliest wrong step. Never present the earliest mode as an improvement
   without that trade-off.
-- Baseten spend: about $21 of $100 (runs through Oct 28 17:31, plus agent
-  runs and live demo use).
+- Baseten spend: about $35 of $100 (runs through Oct 28 17:31, agent runs,
+  live demo use, and Who&When's $13.55).
 - `git_info` excludes `results/`. Runs 2-4 of the first ablation record a
   false-positive `dirty: true`; documented, not edited.
 

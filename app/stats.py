@@ -1,13 +1,14 @@
 """Every number the demo page shows, computed from the saved runs.
 
 The page never hard-codes a result: it reads ``app/static/results.json``,
-which this module writes from ``results/runs/`` and
-``results/analysis/knew.json``. A test checks that the committed file is
+which this module writes from ``results/runs/``, ``results/attribution/``
+and ``results/analysis/knew.json``. A test checks that the committed file is
 exactly what this produces, so a number on the page cannot drift from the
 data behind it.
 
-The one figure not computed here is GroundingBench's 1 of 1,794, which comes
-from the prior-work paper and is labelled as such on the page.
+The figures not computed here are GroundingBench's 1 of 1,794, from the
+prior-work paper, and the Who&When paper's own accuracies; the page labels
+both as such.
 
 Usage:
     python -m app.stats      # rewrites app/static/results.json
@@ -23,6 +24,7 @@ from math import comb
 from pathlib import Path
 from typing import Any
 
+from benchmark import whowhen
 from benchmark.fetch_data import DATA_DIR
 from benchmark.grade import grade_trace, summarize
 from benchmark.knew import OUT_PATH as KNEW_PATH
@@ -164,8 +166,40 @@ def build() -> dict[str, Any]:
         "replication": replication("fireworks"),
         "agent_runs": agent_runs(),
         "earliest": earliest_fix(),
+        "whowhen": who_and_when(),
         "prior_work": PRIOR_WORK,
     }
+
+
+def who_and_when() -> dict[str, Any]:
+    """Failure attribution on Who&When, beside the paper's methods and fixed rules."""
+    records = whowhen.load_records()
+    reports = {
+        setting: whowhen.report(
+            whowhen.ATTRIBUTION_DIR / f"whowhen-baseten-{setting}-retry2", records
+        )
+        for setting in ("without-answer", "with-answer")
+    }
+    main, answered = reports["without-answer"], reports["with-answer"]
+    out: dict[str, Any] = {}
+    for subset, key in (("Algorithm-Generated", "algorithm"), ("Hand-Crafted", "hand")):
+        paper = whowhen.PAPER["without_answer"][subset]
+        # The best fixed rule, chosen with the labels: a generous floor.
+        rule = max((r[subset] for r in main["baselines"].values()), key=lambda r: r["k"])
+        out[key] = {
+            "exact": _kn(main["summary"][subset]["exact"]),
+            "exact_with_answer": _kn(answered["summary"][subset]["exact"]),
+            "agent": _kn(main["summary"][subset]["agent"]),
+            "best_rule": _kn(rule),
+            "paper_best": max(v for k, v in paper.items() if k != "random"),
+        }
+    out["o1"] = whowhen.PAPER["reasoning_models_hand_crafted"]["o1 step-by-step"]
+    out["runs"] = len(records)
+    # Without the answer: first answers whose citation the verifier sent back,
+    # and how many of those were then corrected.
+    out["sent_back"] = {"k": main["retried"]["records"], "n": len(records)}
+    out["corrected"] = {"k": main["retried"]["then_verified"], "n": main["retried"]["records"]}
+    return out
 
 
 def earliest_fix() -> dict[str, Any]:

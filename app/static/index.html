@@ -206,6 +206,35 @@
             <span data-num="agent_runs.review_agrees.k">10</span> of <span data-num="agent_runs.review_agrees.n">12</span>.</p>
         </div>
         <div class="card wide reveal">
+          <h3>Someone else's benchmark: which step broke the run?</h3>
+          <div class="sub">Who&amp;When (ICML 2025): <span data-num="whowhen.runs">184</span> failed runs of
+            multi-agent systems, each labelled by people with the step where it first went wrong. Pinpoint read
+            each log, without the correct answer, and cited the decisive mistake. Settings and metrics were
+            committed before the runs.</div>
+          <div class="table-wrap">
+            <table class="rep">
+              <thead><tr><th></th><th>Pinpoint<br><span>Muse Spark Open</span></th>
+                <th>Best fixed rule<br><span>never reads the log</span></th>
+                <th>Paper's best<br><span>GPT-4o</span></th></tr></thead>
+              <tbody>
+                <tr><td>exact step, algorithm-generated runs</td>
+                  <td class="ok" data-pct="whowhen.algorithm.exact"></td>
+                  <td data-pct="whowhen.algorithm.best_rule"></td>
+                  <td><span data-num="whowhen.algorithm.paper_best">16.59</span>%</td></tr>
+                <tr><td>exact step, hand-crafted runs (up to 130 messages)</td>
+                  <td class="ok" data-pct="whowhen.hand.exact"></td>
+                  <td data-pct="whowhen.hand.best_rule"></td>
+                  <td><span data-num="whowhen.hand.paper_best">8.77</span>%</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <p class="foot">The paper's figures are its own, from other models on the same data and metric (o1
+            reached <span data-num="whowhen.o1">13.79</span>% on hand-crafted runs). A rule that never reads the
+            log, picked with the labels, already beats them on the first subset, so it is shown too. One run,
+            exact match; the paper's looser substring rule is in the repository. Given the correct answer:
+            <b data-pct="whowhen.algorithm.exact_with_answer"></b> and <b data-pct="whowhen.hand.exact_with_answer"></b>.</p>
+        </div>
+        <div class="card wide reveal">
           <h3>Same result on a second host</h3>
           <div class="sub">The <span data-num="replication.rerun.accuracy.single.n">600</span> naturalistic traces again,
             with the same open model served by Fireworks instead of Baseten.</div>
@@ -241,8 +270,10 @@
             <div><b data-count="verification.unverified_citations"></b><span>citations that failed verification</span></div>
             <div><b data-pct="groundingbench.accuracy.pinpoint"></b><span>Pinpoint's verdict accuracy</span></div>
           </div>
-          <p class="foot">The gain comes from the schema; the verifier was never needed on this data. On a real
-            agent, it is what stops a confident but invented citation from being shown.</p>
+          <p class="foot">The gain comes from the schema; the verifier was never needed on these audits. On
+            Who&amp;When's real logs it was: it sent back <b data-kn="whowhen.sent_back"></b> first answers
+            (quotes not in the cited step, or too vague to check), and <b data-kn="whowhen.corrected"></b> were
+            corrected. That is what stops a confident but invented citation from being shown.</p>
         </div>
       </div>
     </div>
@@ -443,17 +474,20 @@
       <h2 class="section-title reveal">What this does not show yet.</h2>
       <div class="limits">
         <div class="card lift reveal"><h3>One model, small real runs</h3>
-          <p>Every result is Muse Spark Open, one run per setup. The real-agent runs are 12 small tasks in a
-            sandbox; no production agent's work has been audited yet.</p></div>
+          <p>Every result is Muse Spark Open, one run per setup. The real logs so far are 12 small sandboxed
+            tasks and <span data-num="whowhen.runs">184</span> runs of research multi-agent systems; no
+            production agent's work has been audited yet.</p></div>
         <div class="card lift reveal d1"><h3>A bias of its own</h3>
           <p>When an agent tampers with a test and then truthfully says the tests pass, Pinpoint sometimes files
             the misleading claim as the offense. We tested a fix (cite the earliest wrong step) on unseen
             traces: <b data-kn="earliest.fresh.earliest"></b> against <b data-kn="earliest.fresh.two_slot"></b>.
             But on GroundingBench it slipped from <b data-kn="earliest.groundingbench.two_slot"></b> to
             <b data-kn="earliest.groundingbench.earliest"></b>, so by our pre-set rule it is not the default.</p></div>
-        <div class="card lift reveal d2"><h3>The benchmark's shape</h3>
-          <p>In GroundingBench the lie is always the agent's final answer, which suits the offense rule. The
-            pre-registered mid-trace set was built to test beyond that.</p></div>
+        <div class="card lift reveal d2"><h3>Long logs are still hard</h3>
+          <p>In GroundingBench the lie is always the agent's final answer, which suits the offense rule; the
+            mid-trace set and Who&amp;When test beyond that. On Who&amp;When's long logs (up to 130 messages)
+            Pinpoint names the exact step <b data-pct="whowhen.hand.exact"></b> of the time: above the
+            published baselines, far from reliable.</p></div>
       </div>
     </div>
   </section>
