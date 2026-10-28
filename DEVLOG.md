@@ -1004,11 +1004,86 @@ fallback on an unreachable host, no fallback when the host answered or
 answered badly, both hosts down, the allowance counted once. 724 pass.
 Mutants killed: fallback on any provider error, fallback on any failure.
 
+### 13:17 · The demo becomes a site; every number generated; live side-by-side · (uncommitted)
+
+**Hackathon rules, read from the participant guide** (recorded in
+CLAUDE.md): the rubric is Impact 30%, Use of Meta AI 25%, Demo 25%,
+Technical depth 20% (CLAUDE.md had "equal weight", now fixed). Problem
+statement chosen: Push the Frontier. Bonus "Best Build on Meta Open Weight
+Models" ($10K) is verified by the inference partner from its own records,
+so the live demo must keep calling Baseten through judging (Nov 5-8).
+
+**Site.** `app/static/` is now `index.html`, `style.css`, `app.js`, no build
+step and no external requests. Sections: hero with an animated Louvre trace
+(the plain trace, then the single citation on the document, then Pinpoint's
+offense and contradiction, from the saved audits); the problem (GroundingBench's
+1 of 1,794, labelled prior work); how it works; results (growing bars, 2x2
+grids, count-ups); "It knew. It didn't say." (funnel and rotating verbatim
+reasoning); Try it (the three tabs); honest limits. Light/dark toggle;
+animations off under prefers-reduced-motion.
+
+**Every number generated.** The earlier page hand-typed its headline
+numbers, against the rule that every number shown comes from a saved run.
+`app/stats.py` now computes them all from `results/runs/` and
+`results/analysis/knew.json` into `app/static/results.json`, which the page
+reads. Recomputed independently, they match the README: substitution 176/180
+vs 0/179, step 240/538 vs 536/536, accuracy 716 vs 715/720, factorial
+38/89/90/90 of 90, mid-trace 23/24/21/21 of 24 with Fisher p = 0.23 (now
+computed, not typed), reasoning 176/166/137/94, 2,064 audits with 0 failed
+citations. The one constant is GroundingBench's 1 of 1,794, sourced as prior
+work. Tests: committed file equals a rebuild; headline values pinned; every
+`data-*` path the page asks for exists; numbers written into the HTML as
+fallbacks equal the data; the script never uses `innerHTML`.
+
+**Live side-by-side.** `/api/audit` takes `compare: true`: the usual
+one-citation overseer (same client, `mode="single"`) runs on the same trace
+in parallel, each side falling back to Fireworks on its own. A comparison
+counts as two audits, granted all or nothing, per day and per visitor. The
+page shows both, and since a live trace has no label, each banner states what
+the verifier knows: whether the first citation quotes the agent's own action
+or a tool's output. First real run (the Louvre trace): single cited step 2,
+`read_document`, a tool's output; Pinpoint cited step 5, `submit_answer`, the
+agent's own action. 5.5 s for both.
+
+ruff, mypy clean; 740 tests pass. The page script has no automated test (no
+Node here); Manas checked the site in a browser.
+
+### 13:40 · Fireworks replication: the headline holds on a second host · (uncommitted)
+
+`results/runs/eval_traces_realistic-fireworks-{single,two_slot}-retry0/`, as
+planned at 12:11. 1,200 audits, no failures, $8.40.
+
+| naturalistic set (600) | Baseten single | Fireworks single | Baseten two-slot | Fireworks two-slot |
+|---|---|---|---|---|
+| cited the document instead of the lie | 147/150 | 147/150 | 0/149 | 0/150 |
+| offense on the labelled step | 202/448 | 210/448 | 446/446 | 448/448 |
+| verdict accuracy | 596/600 | 594/600 | 595/600 | 596/600 |
+| per class step (RH / LAZY / DEC), single | 49 / 150 / 3 | 57 / 150 / 3 | | |
+
+Every planned comparison points the same way, and the substitution count is
+identical (147/150). No citation failed verification in either run.
+
+**Process flaw, disclosed, not edited.** The single run started from
+`2f8a3ee`, clean. The two-slot run recorded commit `af5c7c1` and
+`dirty: true`. Cause: both runs were chained in one background command, so
+the second started about 35 minutes later (07:17 UTC), after two new commits
+(the Fireworks fallback in `app/`, the README) and while documentation and
+demo files were being edited. Checked: `git diff 2f8a3ee af5c7c1 -- pinpoint
+benchmark` is empty, the working tree has no changes under `pinpoint/` or
+`benchmark/`, and both configs record prompt version 3 with identical
+settings. Nothing the model sees differed. Lesson: start each real run on its
+own, after checking the tree is clean, never chained.
+
+Generated numbers updated: `replication` in `results.json` (page card "Same
+result on a second host"); the audit count now covers every run, 3,264, with
+0 failed citations (was Baseten-only, 2,064). README updated.
+
 ---
 
 ## Next
 
-- Fireworks replication runs (in progress).
+- Site: shareable example links, "use it from your agent" API panel, paste
+  OpenAI-style agent logs.
 - Pinger on `/api/status`; check the URL from a phone.
 - Muse Spark once the card hold succeeds.
 - If time is left: offense-slot fix (more than one offense, or the earliest

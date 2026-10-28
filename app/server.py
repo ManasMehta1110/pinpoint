@@ -27,6 +27,7 @@ import threading
 import time
 from collections import defaultdict, deque
 from collections.abc import Callable
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
@@ -86,8 +87,8 @@ class Budget:
             self._roll(self._clock())
             return max(0, self.limits.daily_cap - self._used_today)
 
-    def try_acquire(self, visitor: str) -> str | None:
-        """Grant one audit, or return why not."""
+    def try_acquire(self, visitor: str, units: int = 1) -> str | None:
+        """Grant ``units`` audits at once, or none and say why."""
         with self._lock:
             now = self._clock()
             self._roll(now)
@@ -96,10 +97,12 @@ class Budget:
                 recent.popleft()
             if self._used_today >= self.limits.daily_cap:
                 return "Today's live audits are used up. The gallery and verifier still work."
-            if len(recent) >= self.limits.per_visitor_per_hour:
+            if self._used_today + units > self.limits.daily_cap:
+                return "Not enough live audits left today for a comparison. Try a single audit."
+            if len(recent) + units > self.limits.per_visitor_per_hour:
                 return "You have run the hourly maximum of live audits. Try again later."
-            recent.append(now)
-            self._used_today += 1
+            recent.extend([now] * units)
+            self._used_today += units
             return None
 
 
@@ -112,6 +115,8 @@ class VerifyRequest(BaseModel):
 
 class AuditRequest(BaseModel):
     trace: dict[str, Any]
+    # Also run the usual one-citation overseer on the same trace, for comparison.
+    compare: bool = False
 
 
 def parse_trace(raw: dict[str, Any]) -> Trace:
@@ -157,7 +162,7 @@ def audit_response(trace: Trace, result: OverseerResult) -> dict[str, Any]:
     return {
         "status": result.status,
         "trace": trace_view(trace),
-        "pinpoint": audit_view(trace, audit, check, result.mode),
+        "audit": audit_view(trace, audit, check, result.mode),
         "reasoning": None if completion is None else completion.reasoning,
         "attempts": len(result.attempts),
         "citation_retries": result.citation_retries,
@@ -184,6 +189,28 @@ def unreachable(result: OverseerResult) -> bool:
     )
 
 
+def audit_with_fallback(
+    primary: Overseer, backup: Overseer | None, trace: Trace
+) -> tuple[OverseerResult, bool]:
+    """Audit on the primary host; if it cannot be reached, on the backup."""
+    result = primary.audit(trace)
+    if backup is not None and unreachable(result):
+        return backup.audit(trace), True
+    return result, False
+
+
+def baseline_of(overseer: Overseer | None) -> Overseer | None:
+    """The usual one-citation overseer on the same client and budgets, for comparison."""
+    if overseer is None:
+        return None
+    return Overseer(
+        overseer.client,
+        mode="single",
+        max_citation_retries=overseer.max_citation_retries,
+        max_format_retries=overseer.max_format_retries,
+    )
+
+
 def _model_of(overseer: Overseer | None) -> str:
     provider = getattr(overseer.client, "provider", None) if overseer is not None else None
     return provider.model if isinstance(provider, Provider) else PROVIDER.model
@@ -202,6 +229,7 @@ def create_app(
     limits = limits or Limits()
     budget = Budget(limits, clock)
     slots = threading.BoundedSemaphore(limits.max_concurrent)
+    baseline, baseline_fallback = baseline_of(overseer), baseline_of(fallback)
     app = FastAPI(title="Pinpoint", docs_url=None, redoc_url=None, openapi_url=None)
 
     @app.middleware("http")
@@ -250,18 +278,29 @@ def create_app(
         if not slots.acquire(blocking=False):
             raise HTTPException(503, "Busy with other audits. Try again in a minute.")
         try:
-            refusal = budget.try_acquire(visitor_of(request))
+            refusal = budget.try_acquire(visitor_of(request), 2 if body.compare else 1)
             if refusal is not None:
                 raise HTTPException(429, refusal)
-            result = overseer.audit(trace)
-            fell_back = fallback is not None and unreachable(result)
-            if fell_back:
-                assert fallback is not None
-                result = fallback.audit(trace)
+            # The comparison runs alongside, so asking for it costs no extra time.
+            with ThreadPoolExecutor(max_workers=2) as pool:
+                ours = pool.submit(audit_with_fallback, overseer, fallback, trace)
+                theirs = None
+                if body.compare:
+                    assert baseline is not None
+                    theirs = pool.submit(audit_with_fallback, baseline, baseline_fallback, trace)
+                result, fell_back = ours.result()
+                compared = None if theirs is None else theirs.result()
         finally:
             slots.release()
         response = audit_response(trace, result)
         response["fell_back"] = fell_back
+        response["baseline"] = None
+        if compared is not None:
+            other, other_fell_back = compared
+            response["baseline"] = {
+                k: v for k, v in audit_response(trace, other).items() if k != "trace"
+            }
+            response["baseline"]["fell_back"] = other_fell_back
         response["remaining_today"] = budget.remaining_today()
         return response
 

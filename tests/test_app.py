@@ -172,9 +172,9 @@ def test_live_audit_returns_highlighted_citations() -> None:
     assert response.status_code == 200, response.text
     body = response.json()
     assert body["status"] == "verified"
-    assert body["pinpoint"]["verdict"] == "DECEIVER"
-    assert body["pinpoint"]["offense"]["span"] is not None
-    assert body["pinpoint"]["contradicted_by"]["span"] is not None
+    assert body["audit"]["verdict"] == "DECEIVER"
+    assert body["audit"]["offense"]["span"] is not None
+    assert body["audit"]["contradicted_by"]["span"] is not None
     assert body["tokens"] == {"in": 1000, "out": 200}
     assert body["cost_usd"] == pytest.approx((1000 * 1.25 + 200 * 4.25) / 1e6)
     assert body["remaining_today"] == 2
@@ -482,3 +482,59 @@ def test_single_slot_views_have_no_second_citation() -> None:
     # No offense rule in single mode: a document quote is highlighted.
     assert view["offense"]["span"] is not None
     assert audit_view(trace, None, None, "single") is None
+
+
+# --- comparing with the usual one-citation overseer ------------------------------------
+
+# One scripted answer that reads correctly in both modes: two-slot reads
+# offense and contradicted_by, single reads evidence (here, the document).
+BOTH = {**GOOD_AUDIT, "evidence": {"step": 2, "quote": "formed in 1945"}}
+
+
+def test_compare_runs_the_usual_overseer_too() -> None:
+    client = make_client([BOTH, BOTH], Limits(daily_cap=10))
+    body = client.post("/api/audit", json={"trace": TRACE, "compare": True}).json()
+    assert body["audit"]["mode"] == "two_slot"
+    assert body["audit"]["offense"]["step"] == 3
+    baseline = body["baseline"]
+    assert baseline["audit"]["mode"] == "single"
+    assert baseline["audit"]["offense"]["step"] == 2  # the document
+    assert baseline["audit"]["contradicted_by"] is None
+    assert "trace" not in baseline and baseline["fell_back"] is False
+    assert body["remaining_today"] == 8  # a comparison is two audits
+
+
+def test_without_compare_there_is_no_baseline() -> None:
+    body = make_client([BOTH]).post("/api/audit", json={"trace": TRACE}).json()
+    assert body["baseline"] is None
+
+
+def test_a_comparison_needs_two_audits_left() -> None:
+    client = make_client([BOTH, BOTH, BOTH], Limits(daily_cap=3, per_visitor_per_hour=100))
+    assert client.post("/api/audit", json={"trace": TRACE, "compare": True}).status_code == 200
+    refused = client.post("/api/audit", json={"trace": TRACE, "compare": True})
+    assert refused.status_code == 429 and "single audit" in refused.json()["detail"]
+    # Nothing was spent by the refusal: the last audit is still there.
+    assert client.post("/api/audit", json={"trace": TRACE}).status_code == 200
+
+
+def test_a_comparison_counts_twice_per_visitor() -> None:
+    client = make_client([BOTH] * 4, Limits(daily_cap=100, per_visitor_per_hour=3))
+    assert client.post("/api/audit", json={"trace": TRACE, "compare": True}).status_code == 200
+    assert client.post("/api/audit", json={"trace": TRACE, "compare": True}).status_code == 429
+
+
+def test_each_side_falls_back_on_its_own() -> None:
+    down = ClientError("down")
+    # The primary host fails once; whichever side drew the failure falls back.
+    client = make_fallback_client([down, BOTH], [BOTH], Limits(daily_cap=10))
+    body = client.post("/api/audit", json={"trace": TRACE, "compare": True}).json()
+    assert body["status"] == "verified" and body["baseline"]["status"] == "verified"
+    assert [body["fell_back"], body["baseline"]["fell_back"]].count(True) == 1
+
+
+def test_budget_grants_several_units_at_once() -> None:
+    budget = Budget(Limits(daily_cap=3, per_visitor_per_hour=100), Clock())
+    assert budget.try_acquire("a", 2) is None
+    assert budget.try_acquire("a", 2) is not None
+    assert budget.remaining_today() == 1

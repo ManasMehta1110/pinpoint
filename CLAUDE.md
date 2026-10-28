@@ -99,6 +99,13 @@ python -m venv .venv
   the trace: check each against the trace text.
 - Reasoning excerpts are hand-picked and must be verbatim in the saved
   reasoning; the build fails otherwise.
+- Never type a result number into the page. Add it to `app/stats.py`,
+  rebuild `app/static/results.json` (`python -m app.stats`) and reference it
+  with a `data-num` / `data-kn` / `data-pct` / `data-count` attribute;
+  `tests/test_stats.py` checks every path exists and every fallback matches.
+  Rebuild both JSON files whenever runs change.
+- `/api/audit` with `compare: true` also runs `mode="single"` in parallel and
+  counts as two audits.
 - Only verified citations are highlighted. Page text from traces goes into
   the DOM via `textContent` only: live traces are visitor input.
 - Deployed on Render (free), https://pinpoint-1sjo.onrender.com/, from the

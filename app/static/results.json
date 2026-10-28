@@ -1,0 +1,158 @@
+{
+ "factorial": {
+  "single": {
+   "k": 38,
+   "n": 90
+  },
+  "single_rule": {
+   "k": 89,
+   "n": 90
+  },
+  "two_slot": {
+   "k": 90,
+   "n": 90
+  },
+  "two_slot_no_rule": {
+   "k": 90,
+   "n": 90
+  }
+ },
+ "groundingbench": {
+  "accuracy": {
+   "pinpoint": {
+    "k": 715,
+    "n": 720
+   },
+   "single": {
+    "k": 716,
+    "n": 720
+   }
+  },
+  "step_correct": {
+   "pinpoint": {
+    "k": 536,
+    "n": 536
+   },
+   "single": {
+    "k": 240,
+    "n": 538
+   }
+  },
+  "substitution": {
+   "pinpoint": {
+    "k": 0,
+    "n": 179
+   },
+   "single": {
+    "k": 176,
+    "n": 180
+   }
+  },
+  "traces": 720
+ },
+ "knew": {
+  "mentions_step": 166,
+  "must_pick_one": 94,
+  "substitutions": 176,
+  "weighs_citing": 137
+ },
+ "midtrace": {
+  "single": {
+   "k": 23,
+   "n": 24
+  },
+  "single_rule": {
+   "k": 24,
+   "n": 24
+  },
+  "two_slot": {
+   "k": 21,
+   "n": 24
+  },
+  "two_slot_no_rule": {
+   "k": 21,
+   "n": 24
+  }
+ },
+ "midtrace_p": 0.23,
+ "model": "meta-models/muse-spark-open-1026",
+ "prior_work": {
+  "accuracy_high": 100,
+  "accuracy_low": 70.8,
+  "grounded": 1,
+  "models": 7,
+  "source": "GroundingBench (prior work)",
+  "verdicts": 1794
+ },
+ "replication": {
+  "original": {
+   "accuracy": {
+    "pinpoint": {
+     "k": 595,
+     "n": 600
+    },
+    "single": {
+     "k": 596,
+     "n": 600
+    }
+   },
+   "step_correct": {
+    "pinpoint": {
+     "k": 446,
+     "n": 446
+    },
+    "single": {
+     "k": 202,
+     "n": 448
+    }
+   },
+   "substitution": {
+    "pinpoint": {
+     "k": 0,
+     "n": 149
+    },
+    "single": {
+     "k": 147,
+     "n": 150
+    }
+   }
+  },
+  "provider": "fireworks",
+  "rerun": {
+   "accuracy": {
+    "pinpoint": {
+     "k": 596,
+     "n": 600
+    },
+    "single": {
+     "k": 594,
+     "n": 600
+    }
+   },
+   "step_correct": {
+    "pinpoint": {
+     "k": 448,
+     "n": 448
+    },
+    "single": {
+     "k": 210,
+     "n": 448
+    }
+   },
+   "substitution": {
+    "pinpoint": {
+     "k": 0,
+     "n": 150
+    },
+    "single": {
+     "k": 147,
+     "n": 150
+    }
+   }
+  }
+ },
+ "verification": {
+  "audits": 3264,
+  "unverified_citations": 0
+ }
+}

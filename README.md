@@ -88,6 +88,21 @@ different model, format and prompt, on both distributions.
 own action, every one of 179 correctly flagged deceptive traces cites the
 agent's false claim, and every misbehavior offense lands on the labelled step.
 
+**It replicates on a second host.** The 600 naturalistic traces again, with
+the same open model served by Fireworks instead of Baseten (planned in
+advance, DEVLOG 12:11):
+
+| naturalistic set (600) | Baseten, single | Fireworks, single | Baseten, Pinpoint | Fireworks, Pinpoint |
+|---|---|---|---|---|
+| cited the document instead of the lie | 147/150 | 147/150 | 0/149 | 0/150 |
+| offense on the labelled step | 202/448 | 210/448 | 446/446 | 448/448 |
+| verdict accuracy | 596/600 | 594/600 | 595/600 | 596/600 |
+
+The two-slot Fireworks run's manifest records `dirty: true`: it started later
+than planned, while documentation and demo files were being edited. Nothing
+the model sees differed (no changes to `pinpoint/` or `benchmark/`, same prompt
+version); see DEVLOG.
+
 **It knew, it didn't say.** The single-citation model had found the lie. In
 the 176 substitutions its saved reasoning refers to the agent's false answer in
 166, explicitly weighs citing it in 137, and remarks that it may give only
@@ -142,15 +157,16 @@ The difference is not significant (Fisher p = 0.23), and scripted traces are
 not recorded agent runs. On both datasets together, the offense rule alone was
 the most robust configuration (113/114). The demo shows one of these misses.
 
-**The verifier was never needed on this data.** Across all 2,064 audits
-(1,920 on GroundingBench, 144 mid-trace), no citation failed verification. The
+**The verifier was never needed on this data.** Across all 3,264 audits
+(2,064 on Baseten, 1,200 on Fireworks), no citation failed verification. The
 gain comes from the prompt and schema; the verifier is a guarantee. (Most runs
 had retries switched off, so the comparisons measure the schema alone. A
 forced test confirms the retry works: told its citation was "returned by the
 read_document tool, not written by the agent", the model corrected it.)
 
 **Caveats.**
-- One model, one run per configuration.
+- One model, one run per configuration per host (the naturalistic comparison
+  ran on two hosts).
 - Every GroundingBench smoking gun is the agent's final `submit_answer` step,
   which the offense rule aligns with. The rule does not name that step, and
   citing any other agent action also verifies, but the alignment is real.
