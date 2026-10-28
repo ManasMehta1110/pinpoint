@@ -152,6 +152,17 @@ def test_meta_request_uses_its_own_url_model_and_token_param() -> None:
     assert "max_tokens" not in body
 
 
+def test_fireworks_request_uses_its_own_url_and_model() -> None:
+    server = FakeServer(ok())
+    client_for(server, "fireworks").complete(MESSAGES, TOOLS)
+    assert str(server.requests[0].url) == "https://api.fireworks.ai/inference/v1/chat/completions"
+    assert server.requests[0].headers["authorization"] == f"Bearer {SECRET}"
+    body = server.body()
+    assert body["model"] == "accounts/fireworks/models/muse-spark-open"
+    assert body["max_tokens"] == DEFAULT_MAX_TOKENS
+    assert "max_completion_tokens" not in body
+
+
 def test_optional_settings_are_sent_when_set() -> None:
     server = FakeServer(ok())
     client_for(server, reasoning_effort="high", temperature=0.0, max_tokens=999).complete(
@@ -367,7 +378,11 @@ def test_max_tokens_must_be_positive() -> None:
 def test_provider_table() -> None:
     assert PROVIDERS["baseten"].model == "meta-models/muse-spark-open-1026"
     assert PROVIDERS["meta"].model == "muse-spark-1.3"
-    assert {p.api_key_env for p in PROVIDERS.values()} == {"BASETEN_API_KEY", "MODEL_API_KEY"}
+    assert PROVIDERS["fireworks"].model == "accounts/fireworks/models/muse-spark-open"
+    assert {p.api_key_env for p in PROVIDERS.values()} == {
+        "BASETEN_API_KEY", "FIREWORKS_API_KEY", "MODEL_API_KEY",
+    }  # fmt: skip
+    assert all(name == p.name for name, p in PROVIDERS.items())
 
 
 def test_load_env_never_overrides_existing_values(

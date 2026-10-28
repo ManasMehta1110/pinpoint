@@ -1,9 +1,11 @@
 """One client for every Meta model Pinpoint uses.
 
-Both providers speak the OpenAI Chat Completions protocol, so a single
+Every provider speaks the OpenAI Chat Completions protocol, so a single
 client covers them; a ``Provider`` records only what differs:
 
 * ``baseten``: Muse Spark Open, Meta's open-weights model, served by Baseten.
+* ``fireworks``: the same open-weights model, served by Fireworks. Used to
+  check that results do not depend on one host, and as a fallback.
 * ``meta``: Muse Spark, through the Meta Model API.
 
 Every call returns a ``Completion`` holding the full raw response alongside
@@ -52,6 +54,13 @@ PROVIDERS: dict[str, Provider] = {
         api_key_env="BASETEN_API_KEY",
         # The hackathon key works only with this exact id.
         model="meta-models/muse-spark-open-1026",
+        max_tokens_param="max_tokens",
+    ),
+    "fireworks": Provider(
+        name="fireworks",
+        base_url="https://api.fireworks.ai/inference/v1",
+        api_key_env="FIREWORKS_API_KEY",
+        model="accounts/fireworks/models/muse-spark-open",
         max_tokens_param="max_tokens",
     ),
     "meta": Provider(

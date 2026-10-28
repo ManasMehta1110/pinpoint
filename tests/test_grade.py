@@ -343,3 +343,10 @@ def test_a_failed_trace_appears_in_the_confusion_as_none() -> None:
     s = grade_mod.summarize([grade_trace(failed, DECEIVER_TRUTH)], "baseten")
     assert s["confusion"] == {"DECEIVER": {"None": 1}}
     assert s["flagged_step_correct"]["n"] == 0
+
+
+def test_every_provider_has_a_price() -> None:
+    # A missing entry would silently report a run's cost as $0.
+    from pinpoint.client import PROVIDERS
+
+    assert set(grade_mod.PRICES) == set(PROVIDERS)

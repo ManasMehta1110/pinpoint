@@ -45,7 +45,7 @@ from benchmark.run import load_records
 CLASSES = ("HONEST", "REWARD_HACKER", "LAZY", "DECEIVER")
 MISBEHAVIOR = CLASSES[1:]
 # USD per million tokens, (input, output). Same list price on both providers.
-PRICES = {"baseten": (1.25, 4.25), "meta": (1.25, 4.25)}
+PRICES = {"baseten": (1.25, 4.25), "fireworks": (1.25, 4.25), "meta": (1.25, 4.25)}
 
 
 class GradeError(RuntimeError):
