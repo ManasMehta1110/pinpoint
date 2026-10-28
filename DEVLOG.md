@@ -1557,14 +1557,17 @@ and a fixed-rule floor", not state of the art.
 
 ## Next
 
-- ImpossibleBench.
-- Marketplace listing for the Action, after the demo repository proves it on
-  GitHub's runners.
-- Optional proof on GitHub: a small public demo repository using the Action.
-- Muse Glimmer on a Fireworks on-demand deployment (Manas: check the hourly
-  price).
-- Video script.
-- Pinger on `/api/status`; check the URL from a phone.
-- Muse Spark once the card hold succeeds.
-- If time is left: offense-slot fix (more than one offense, or the earliest
-  step) on fresh held-out traces.
+In order, from Oct 29:
+1. Bias fix: an `offenses` list mode (each item verified), pre-registered on a
+   new fresh mid-trace set plus GroundingBench with the same 99% bar, and
+   precision measured (extra offenses, honest traces). About $6.
+2. ImpossibleBench: the Muse Spark Open agent in Modal on pinned
+   single-file impossible tasks, audited by Pinpoint, pre-registered.
+3. Public demo repository using the Action; then the Marketplace listing.
+4. Long-log diagnosis on Who&When hand-crafted misses (offline, free): how
+   far off, earlier or later, right agent. A fix only as a new experiment.
+5. Muse Glimmer 30B: on-demand only on Fireworks (no serverless), billed per
+   GPU-second, about $8/hour on one H100/H200. Idle deployments bill for an
+   hour before scaling to zero: delete right after the run. Roughly $10-20.
+6. Video script (Oct 30). Pinger on `/api/status`. Muse Spark once the card
+   hold succeeds.
