@@ -134,6 +134,14 @@ def test_page_assets_are_served() -> None:
     assert 'src="/static/app.js"' in PAGE and 'href="/static/style.css"' in PAGE
 
 
+def test_every_icon_the_page_links_is_served() -> None:
+    client = TestClient(create_app(None))
+    icons = re.findall(r'<link rel="(?:icon|apple-touch-icon)" href="([^"]+)"', PAGE)
+    assert len(icons) == 3
+    for path in icons:
+        assert client.get(path).status_code == 200, path
+
+
 def test_trace_text_never_reaches_innerhtml() -> None:
     script = (STATIC_DIR / "app.js").read_text(encoding="utf-8")
     assert "innerHTML" not in script and "insertAdjacentHTML" not in script
