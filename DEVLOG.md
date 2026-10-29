@@ -1589,6 +1589,11 @@ redundant except in a tiny race window, so no test could see it. Replaced by
 claiming the probe slot under the state lock, which is simpler and closes the
 window; its mutant is killed. 989 tests, ruff, mypy strict: clean.
 
+**Fix, 12:05.** The UptimeRobot monitor reported the site down with HTTP 405:
+it checks with HEAD, and the route accepted only GET. `/api/health` now
+answers HEAD too (a test checks 200 and 503 by HEAD, and fails without the
+fix).
+
 **For Manas.** Add a free UptimeRobot HTTP monitor on
 `https://pinpoint-1sjo.onrender.com/api/health`, every 5 minutes, with email
 alerts. It alerts on any 503 and keeps Render's free instance awake.

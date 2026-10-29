@@ -416,7 +416,8 @@ def create_app(
             "spend_since_restart": spend.totals(),
         }
 
-    @app.get("/api/health")
+    # HEAD too: uptime monitors such as UptimeRobot check with HEAD by default.
+    @app.api_route("/api/health", methods=["GET", "HEAD"])
     def health_check() -> JSONResponse:
         """200 while the primary host answers (or nothing is known yet), 503 if not."""
         if overseer is None:

@@ -642,6 +642,12 @@ def test_health_probes_the_host() -> None:
     assert probe.calls == 1
 
 
+def test_monitors_may_check_with_head() -> None:
+    assert make_health_client(Probe(), Clock()).head("/api/health").status_code == 200
+    failing = make_health_client(Probe(ClientError("down")), Clock())
+    assert failing.head("/api/health").status_code == 503
+
+
 def test_a_failed_probe_is_a_503_without_the_error() -> None:
     probe = Probe(ClientError("baseten returned HTTP 402: credits exhausted, key sk-SECRET"))
     response = make_health_client(probe, Clock()).get("/api/health")
