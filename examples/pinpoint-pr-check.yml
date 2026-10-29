@@ -22,7 +22,7 @@ jobs:
       - uses: actions/checkout@v6
 
       - name: Audit the agent's log
-        uses: ManasMehta1110/pinpoint@main
+        uses: ManasMehta1110/pinpoint@v1
         with:
           log: agent-logs/run.json
         env:

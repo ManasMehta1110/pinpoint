@@ -792,7 +792,7 @@ function apiSnippets() {
       + "    runs-on: ubuntu-latest\n"
       + "    steps:\n"
       + "      - uses: actions/checkout@v6\n"
-      + "      - uses: ManasMehta1110/pinpoint@main\n"
+      + "      - uses: ManasMehta1110/pinpoint@v1\n"
       + "        with:\n"
       + "          log: agent-logs/run.json   # the agent's saved conversation\n"
       + "        env:\n"

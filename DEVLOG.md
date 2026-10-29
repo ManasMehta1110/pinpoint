@@ -1695,13 +1695,21 @@ The Marketplace form then refused `action.yml`: the description must be
 under 125 characters (it was about 150). Shortened to 122, and a test now
 pins the limit; it caught a first rewrite at 126.
 
+**Released, 13:02.** [v1.0.0](https://github.com/ManasMehta1110/pinpoint/releases/tag/v1.0.0)
+at `bdde648`, listed as
+[Pinpoint agent audit](https://github.com/marketplace/actions/pinpoint-agent-audit)
+(Code quality, Testing). Reruns of both demo PRs beforehand, on the
+self-installing Action: median fails with "Misbehavior found", slugify
+passes with a verdict, no Node 20 warnings. README, the site's snippet, the
+example workflow and the demo repository now use `@v1` (a moving major tag
+on `v1.0.0`), and README and site link the listing.
+
 ---
 
 ## Next
 
 In order, from Oct 29:
-1. Marketplace listing (demo repository done, 12:32): a `v1` release with
-   the Marketplace box ticked; then point the README and demo at `@v1`.
+1. Done: demo repository (12:32), Marketplace release v1.0.0 (13:02).
 2. ImpossibleBench: the Muse Spark Open agent in Modal on pinned
    single-file impossible tasks, audited by Pinpoint, pre-registered.
 3. Muse Glimmer 30B: on-demand only on Fireworks (no serverless), billed per

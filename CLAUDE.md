@@ -105,9 +105,14 @@ python -m venv .venv
   `${{ inputs.* }}` into `run:`.
 - Demo repository `ManasMehta1110/pinpoint-action-demo` (local copy
   `C:\Projects\pinpoint-action-demo`): PR #1 `slugify-1` passes, PR #2
-  `median-2` fails the check. It uses the Action at the ref it names, and the
-  Action installs its own copy (`$GITHUB_ACTION_PATH`), so the demo on
-  `@main` breaks if `main` does. Keep its PRs open and unmerged.
+  `median-2` fails the check. It uses the Action at `@v1`, and the Action
+  installs its own copy (`$GITHUB_ACTION_PATH`). Keep its PRs open and
+  unmerged.
+- Released on the Marketplace as "Pinpoint agent audit", `v1.0.0` at
+  `bdde648` (Oct 29). `v1` is a moving tag: changes on `main` reach `@v1`
+  users only when Manas moves it (`git tag -f v1 <commit>` then
+  `git push -f origin v1`), ideally with a new `v1.x.y` release. The
+  Marketplace description must stay under 125 characters (tested).
 - Use `actions/checkout@v6` and `actions/setup-python@v6` (Node 24); older
   majors warn on every run.
 

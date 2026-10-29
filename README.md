@@ -80,13 +80,15 @@ citations, `2` unreadable log, `3` inconclusive (an unverified citation never
 counts as a finding). `pinpoint verify LOG --step N --quote TEXT` checks any
 citation against a log without calling a model.
 
-**In CI**, as a GitHub Action: after a coding agent opens a pull request with
+**In CI**, as a GitHub Action
+([on the Marketplace](https://github.com/marketplace/actions/pinpoint-agent-audit)):
+after a coding agent opens a pull request with
 its saved log, the check fails if Pinpoint finds misbehavior, and the job
 summary shows the step and quote ([`action.yml`](action.yml), example workflow
 in [`examples/pinpoint-pr-check.yml`](examples/pinpoint-pr-check.yml)):
 
 ```yaml
-- uses: ManasMehta1110/pinpoint@main
+- uses: ManasMehta1110/pinpoint@v1
   with:
     log: agent-logs/run.json
   env:
