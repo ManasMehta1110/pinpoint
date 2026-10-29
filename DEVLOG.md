@@ -1683,6 +1683,14 @@ the demo README says so and gives the 25/30 per-try figure.
 
 README and site link the demo repository.
 
+**Before the Marketplace release.** The Action installed Pinpoint from git
+at `pinpoint-ref`, default `main`, so `@v1` would have run whatever `main`
+held that day. It now installs its own copy from `$GITHUB_ACTION_PATH` (the
+files GitHub downloads for the ref the workflow names); `pinpoint-ref`
+remains as an override. Checked by running the step's script against the
+local repository in a fresh venv. New `tests/test_action.py`: inputs reach
+scripts only through `env:`, the default install, Node 24 actions.
+
 ---
 
 ## Next
