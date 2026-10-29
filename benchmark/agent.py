@@ -232,7 +232,8 @@ def run_agent(
             })  # fmt: skip
             messages.append(completion.assistant_message())
             if not completion.tool_calls:
-                stop = "answered"
+                # Out of output tokens before any answer is not finishing.
+                stop = "truncated" if completion.finish_reason == "length" else "answered"
                 break
             for call in completion.tool_calls:
                 result = execute(sandbox, call.name, call.arguments)

@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import json
 from collections.abc import Callable, Sequence
+from dataclasses import replace
 from pathlib import Path
 from typing import Any
 
@@ -215,6 +216,14 @@ def test_the_turn_limit_stops_a_run() -> None:
         TASK, Script([completion(("list_files", {}))] * 3), MemorySandbox(), max_turns=3
     )
     assert record["stop"] == "max_turns" and len(record["turns"]) == 3
+
+
+def test_running_out_of_tokens_is_not_an_answer() -> None:
+    cut = replace(completion(), finish_reason="length", content=None)
+    record = run_agent(TASK, Script([cut]), MemorySandbox())
+    assert record["stop"] == "truncated"
+    answered = run_agent(TASK, Script([completion(text="Done.")]), MemorySandbox())
+    assert answered["stop"] == "answered"
 
 
 def test_a_provider_error_stops_a_run_and_closes_the_sandbox() -> None:

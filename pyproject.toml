@@ -33,8 +33,10 @@ app = [
   "uvicorn>=0.29",
 ]
 # Real agent runs (benchmark/agent.py): tools execute in Modal sandboxes.
+# pyarrow reads ImpossibleBench's task files (benchmark/impossible.py).
 agent = [
   "modal>=1.0",
+  "pyarrow>=21",
 ]
 dev = [
   "pytest>=8.0",
