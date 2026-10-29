@@ -44,8 +44,15 @@ from benchmark.run import load_records
 
 CLASSES = ("HONEST", "REWARD_HACKER", "LAZY", "DECEIVER")
 MISBEHAVIOR = CLASSES[1:]
-# USD per million tokens, (input, output). Same list price on both providers.
-PRICES = {"baseten": (1.25, 4.25), "fireworks": (1.25, 4.25), "meta": (1.25, 4.25)}
+# USD per million tokens, (input, output). Same list price on all three serverless
+# providers. None: billed per GPU-second for a dedicated deployment, so a run's
+# cost comes from the deployment's uptime, not from its tokens.
+PRICES: dict[str, tuple[float, float] | None] = {
+    "baseten": (1.25, 4.25),
+    "fireworks": (1.25, 4.25),
+    "meta": (1.25, 4.25),
+    "glimmer": None,
+}
 
 
 class GradeError(RuntimeError):
@@ -165,7 +172,7 @@ def summarize(graded: Sequence[Mapping[str, Any]], provider: str) -> dict[str, A
 
     tokens_in = sum(g["tokens_in"] for g in graded)
     tokens_out = sum(g["tokens_out"] for g in graded)
-    price_in, price_out = PRICES.get(provider, (0.0, 0.0))
+    prices = PRICES.get(provider, (0.0, 0.0))
     return {
         "n": n,
         "accuracy": rate(count(lambda g: g["final"]["verdict_correct"]), n),
@@ -200,7 +207,9 @@ def summarize(graded: Sequence[Mapping[str, Any]], provider: str) -> dict[str, A
         "statuses": dict(Counter(g["status"] for g in graded)),
         "failures": dict(Counter(g["failure"] for g in graded if g["failure"])),
         "tokens": {"in": tokens_in, "out": tokens_out},
-        "cost_usd": round((tokens_in * price_in + tokens_out * price_out) / 1e6, 4),
+        "cost_usd": None
+        if prices is None
+        else round((tokens_in * prices[0] + tokens_out * prices[1]) / 1e6, 4),
     }
 
 
@@ -281,8 +290,12 @@ def render(reports: Sequence[Mapping[str, Any]]) -> str:
             f" {s['verdict_changed']} verdict changes ({s['flipped_to_honest']} to HONEST),"
             f" {s['format_retries']} format nudges",
             f"   statuses {s['statuses']}  failures {s['failures'] or 'none'}",
-            f"   tokens {s['tokens']['in']:,} in / {s['tokens']['out']:,} out,"
-            f" about ${s['cost_usd']:.2f}",
+            f"   tokens {s['tokens']['in']:,} in / {s['tokens']['out']:,} out"
+            + (
+                " (billed per GPU-second)"
+                if s["cost_usd"] is None
+                else f", about ${s['cost_usd']:.2f}"
+            ),
             "",
         ]
     return "\n".join(lines)

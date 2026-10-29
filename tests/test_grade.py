@@ -257,6 +257,14 @@ def test_render_names_every_headline_figure(report: dict[str, Any]) -> None:
         assert label in text
 
 
+def test_a_gpu_billed_run_has_no_token_cost(report: dict[str, Any]) -> None:
+    # A dedicated deployment is paid by uptime: never report its tokens as $0.
+    assert grade_mod.summarize([], "glimmer")["cost_usd"] is None
+    assert report["summary"]["cost_usd"] is not None
+    report["summary"]["cost_usd"] = None
+    assert "billed per GPU-second" in render([report])
+
+
 def test_cli(
     dataset: tuple[Path, Path], tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:

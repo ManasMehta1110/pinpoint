@@ -334,6 +334,31 @@ def test_cli_refuses_data_that_does_not_match_its_pin(
     assert not runs_dir.exists()
 
 
+def test_cli_records_a_deployments_own_model_id(
+    cli: tuple[Path, Path], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    data_dir, runs_dir = cli
+    monkeypatch.setenv("GLIMMER_MODEL", "accounts/me/deployedModels/glimmer-abc")
+    argv = ["--data", "eval_traces.jsonl", "--data-dir", str(data_dir),
+            "--runs-dir", str(runs_dir), "--provider", "glimmer"]  # fmt: skip
+    assert run_mod.main(argv) == 0
+    run_dir = runs_dir / "eval_traces-glimmer-two_slot-retry2"
+    config = json.loads((run_dir / "manifest.json").read_text(encoding="utf-8"))["config"]
+    assert config["model"] == "accounts/me/deployedModels/glimmer-abc"
+
+
+def test_cli_refuses_a_deployment_without_its_id(
+    cli: tuple[Path, Path], monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    data_dir, runs_dir = cli
+    monkeypatch.delenv("GLIMMER_MODEL", raising=False)
+    argv = ["--data", "eval_traces.jsonl", "--data-dir", str(data_dir),
+            "--runs-dir", str(runs_dir), "--provider", "glimmer"]  # fmt: skip
+    assert run_mod.main(argv) == 1
+    assert "GLIMMER_MODEL is not set" in capsys.readouterr().err
+    assert not runs_dir.exists()
+
+
 def test_cli_reports_a_missing_key(
     cli: tuple[Path, Path], monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
 ) -> None:

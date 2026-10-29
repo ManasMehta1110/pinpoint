@@ -361,7 +361,9 @@ def report(run_dir: Path, records: Sequence[dict[str, Any]]) -> dict[str, Any]:
     ]
     tokens_in = sum(u.get("prompt_tokens", 0) for u in usage)
     tokens_out = sum(u.get("completion_tokens", 0) for u in usage)
-    price_in, price_out = PRICES["baseten"]
+    baseten = PRICES["baseten"]
+    assert baseten is not None  # Who&When runs on Baseten, billed per token
+    price_in, price_out = baseten
     summary: dict[str, Any] = {}
     for subset in SUBSETS:
         rows = [g for g in graded if g["subset"] == subset]

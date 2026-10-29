@@ -25,6 +25,7 @@ from pinpoint.client import (
     Provider,
     get_provider,
     load_env,
+    resolve_provider,
 )
 from pinpoint.prompt import messages
 from pinpoint.trace import Trace
@@ -140,6 +141,28 @@ def test_baseten_request_shape() -> None:
     assert body["max_tokens"] == DEFAULT_MAX_TOKENS
     for absent in ("max_completion_tokens", "reasoning_effort", "temperature"):
         assert absent not in body
+
+
+def test_a_deployment_needs_its_model_id(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.delenv("GLIMMER_MODEL", raising=False)
+    with pytest.raises(ClientError, match="GLIMMER_MODEL is not set"):
+        ModelClient("glimmer", api_key=SECRET)
+
+
+def test_a_deployment_is_addressed_by_its_own_id(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("GLIMMER_MODEL", "  accounts/me/deployedModels/glimmer-abc  ")
+    server = FakeServer(ok())
+    client = client_for(server, "glimmer")
+    client.complete(MESSAGES, TOOLS)
+    assert str(server.requests[0].url) == "https://api.fireworks.ai/inference/v1/chat/completions"
+    assert server.body()["model"] == "accounts/me/deployedModels/glimmer-abc"
+    assert client.provider.model == "accounts/me/deployedModels/glimmer-abc"
+
+
+def test_serverless_providers_ignore_deployment_ids(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("GLIMMER_MODEL", "accounts/me/deployedModels/glimmer-abc")
+    for name in ("baseten", "fireworks", "meta"):
+        assert resolve_provider(name) is PROVIDERS[name]
 
 
 def test_meta_request_uses_its_own_url_model_and_token_param() -> None:

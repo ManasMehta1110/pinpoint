@@ -23,7 +23,7 @@ from __future__ import annotations
 import os
 import time
 from collections.abc import Mapping, Sequence
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from pathlib import Path
 from typing import Any, cast
 
@@ -45,6 +45,9 @@ class Provider:
     # Reasoning models on the Meta Model API take max_completion_tokens;
     # Baseten documents max_tokens. Reasoning tokens count against either.
     max_tokens_param: str
+    # For a dedicated deployment, the variable holding its model id, which
+    # replaces ``model`` once the environment is loaded.
+    model_env: str | None = None
 
 
 PROVIDERS: dict[str, Provider] = {
@@ -69,6 +72,16 @@ PROVIDERS: dict[str, Provider] = {
         api_key_env="MODEL_API_KEY",
         model="muse-spark-1.3",
         max_tokens_param="max_completion_tokens",
+    ),
+    # Muse Glimmer 30B has no serverless endpoint: it runs on a Fireworks
+    # deployment billed per GPU-second, addressed by that deployment's id.
+    "glimmer": Provider(
+        name="glimmer",
+        base_url="https://api.fireworks.ai/inference/v1",
+        api_key_env="FIREWORKS_API_KEY",
+        model="accounts/fireworks/models/muse-glimmer-30b",
+        max_tokens_param="max_tokens",
+        model_env="GLIMMER_MODEL",
     ),
 }
 
@@ -170,6 +183,22 @@ def get_provider(provider: str | Provider) -> Provider:
         ) from None
 
 
+def resolve_provider(provider: str | Provider) -> Provider:
+    """The provider with a deployment's model id filled in from the environment.
+
+    Raises ``ClientError`` if the provider needs one and it is not set.
+    """
+    found = get_provider(provider)
+    if found.model_env is None:
+        return found
+    model = os.environ.get(found.model_env, "").strip()
+    if not model:
+        raise ClientError(
+            f"{found.model_env} is not set; add your {found.name} deployment's model id to .env"
+        )
+    return replace(found, model=model, model_env=None)
+
+
 class ModelClient:
     """Calls one provider's chat completions endpoint with tools."""
 
@@ -185,7 +214,7 @@ class ModelClient:
         max_retries: int = DEFAULT_MAX_RETRIES,
         http_client: httpx.Client | None = None,
     ) -> None:
-        self.provider = get_provider(provider)
+        self.provider = resolve_provider(provider)
         key = api_key if api_key is not None else os.environ.get(self.provider.api_key_env, "")
         key = key.strip()
         if not key:

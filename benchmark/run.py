@@ -41,7 +41,14 @@ from typing import Any
 from benchmark.fetch_data import DATA_DIR, TRACE_FILES, sha256_of
 from benchmark.midtrace import DATASET_PATH as MIDTRACE_PATH
 from pinpoint.audit import MODES, check_mode
-from pinpoint.client import DEFAULT_MAX_TOKENS, PROVIDERS, ClientError, ModelClient, load_env
+from pinpoint.client import (
+    DEFAULT_MAX_TOKENS,
+    PROVIDERS,
+    ClientError,
+    ModelClient,
+    load_env,
+    resolve_provider,
+)
 from pinpoint.overseer import (
     DEFAULT_MAX_CITATION_RETRIES,
     DEFAULT_MAX_FORMAT_RETRIES,
@@ -321,7 +328,13 @@ def main(argv: list[str] | None = None) -> int:
         print(f"error: {path} does not match the pinned hash; {fix}", file=sys.stderr)
         return 1
 
-    provider = PROVIDERS[args.provider]
+    try:
+        # Before the config: a dedicated deployment's model id comes from .env.
+        load_env()
+        provider = resolve_provider(PROVIDERS[args.provider])
+    except ClientError as exc:
+        print(f"error: {exc}", file=sys.stderr)
+        return 1
     config = RunConfig(
         data_file=args.data,
         data_sha256=sha256,
@@ -341,7 +354,6 @@ def main(argv: list[str] | None = None) -> int:
     run_dir = args.runs_dir / (args.name or default_name(args))
 
     try:
-        load_env()
         client = ModelClient(
             provider,
             max_tokens=args.max_tokens,
