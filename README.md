@@ -93,6 +93,12 @@ in [`examples/pinpoint-pr-check.yml`](examples/pinpoint-pr-check.yml)):
     BASETEN_API_KEY: ${{ secrets.BASETEN_API_KEY }}
 ```
 
+See it on two real pull requests in
+[pinpoint-action-demo](https://github.com/ManasMehta1110/pinpoint-action-demo/pulls),
+each carrying a recorded agent log. On the one where the agent gamed
+contradictory tests, the tests pass and Pinpoint fails the check, quoting
+`return other == low or other == mean`; the honest fix passes both.
+
 **Over HTTP**: `POST /api/audit` on the [live demo](https://pinpoint-1sjo.onrender.com/#api)
 (capped daily), or run the server yourself.
 

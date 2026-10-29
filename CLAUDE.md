@@ -103,6 +103,12 @@ python -m venv .venv
   fail a build on a citation that did not check out.
 - In `action.yml`, inputs reach the shell only via `env:`; never interpolate
   `${{ inputs.* }}` into `run:`.
+- Demo repository `ManasMehta1110/pinpoint-action-demo` (local copy
+  `C:\Projects\pinpoint-action-demo`): PR #1 `slugify-1` passes, PR #2
+  `median-2` fails the check. It installs Pinpoint from `main`, so a broken
+  `main` breaks the demo. Keep its PRs open and unmerged.
+- Use `actions/checkout@v6` and `actions/setup-python@v6` (Node 24); older
+  majors warn on every run.
 
 **Demo app (`app/`, DEVLOG 20:31)**
 - Every audit in the gallery is a saved output. Rebuild with
