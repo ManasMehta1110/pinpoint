@@ -16,12 +16,21 @@ an accidental bill, not a security boundary: the per-visitor cap trusts the
 first X-Forwarded-For address, which a determined client can vary. The daily
 cap holds regardless.
 
+``GET /api/health`` says whether the primary host (Baseten) is answering:
+HTTP 200 if so, 503 if not, for an uptime monitor. The fallback would
+otherwise hide a dead key from visitors and from us. It is learned from live
+audits and from a tiny probe call made at most once an hour, however often
+the URL is hit. Every model call's tokens and cost are printed to the log as
+one JSON line, and ``/api/status`` totals them since the last restart.
+
 Run locally:
     python -m app.server            # http://127.0.0.1:7860, reads .env
 """
 
 from __future__ import annotations
 
+import json
+import math
 import os
 import threading
 import time
@@ -40,7 +49,7 @@ from pydantic import BaseModel
 
 from app.views import audit_view, trace_view
 from pinpoint.adapters import trace_from_openai_messages
-from pinpoint.client import PROVIDERS, ClientError, ModelClient, Provider
+from pinpoint.client import PROVIDERS, ClientError, Completion, ModelClient, Provider
 from pinpoint.overseer import Overseer, OverseerResult
 from pinpoint.prompt import PROMPT_VERSION
 from pinpoint.trace import Trace, TraceError
@@ -105,6 +114,109 @@ class Budget:
             recent.extend([now] * units)
             self._used_today += units
             return None
+
+
+def _iso(t: float | None) -> str | None:
+    return None if t is None else datetime.fromtimestamp(t, UTC).isoformat(timespec="seconds")
+
+
+class Health:
+    """Whether the primary host answers, from live audits and a rate-limited probe.
+
+    ``probe`` makes one small model call and raises ``ClientError`` if the host
+    does not answer. It runs at most once per ``every`` seconds and never
+    twice at once, so hitting the endpoint cannot run up a bill.
+    """
+
+    def __init__(
+        self,
+        probe: Callable[[], None] | None,
+        every: float = 3600,
+        clock: Callable[[], float] = time.time,
+    ) -> None:
+        self._probe = probe
+        self.every = every
+        self._clock = clock
+        self._lock = threading.Lock()
+        self._last_probe = -math.inf
+        self._ok: bool | None = None
+        self.last_ok: float | None = None
+        self.last_failure: float | None = None
+
+    def note(self, ok: bool) -> None:
+        """Record the latest outcome; the most recent one decides ``ok``."""
+        with self._lock:
+            self._ok = ok
+            if ok:
+                self.last_ok = self._clock()
+            else:
+                self.last_failure = self._clock()
+
+    def check(self) -> dict[str, Any]:
+        """Probe if due, then report. ``ok`` is ``None`` until anything is known."""
+        with self._lock:
+            # Claimed under the lock, so concurrent requests cannot both probe.
+            due = self._probe is not None and self._clock() - self._last_probe >= self.every
+            if due:
+                self._last_probe = self._clock()
+        if due:
+            assert self._probe is not None
+            try:
+                self._probe()
+                ok = True
+            except ClientError as exc:
+                _log({"event": "probe_failed", "error": str(exc)})
+                ok = False
+            self.note(ok)
+        with self._lock:
+            return {
+                "ok": self._ok,
+                "last_ok": _iso(self.last_ok),
+                "last_failure": _iso(self.last_failure),
+            }
+
+
+class Spend:
+    """Tokens and cost of every model call since the server started, by host."""
+
+    def __init__(self) -> None:
+        self._lock = threading.Lock()
+        self._by_host: defaultdict[str, dict[str, float]] = defaultdict(
+            lambda: {"calls": 0, "tokens_in": 0, "tokens_out": 0, "cost_usd": 0.0}
+        )
+
+    def add(self, event: str, completion: Completion) -> None:
+        usage = completion.usage or {}
+        tokens_in = int(usage.get("prompt_tokens") or 0)
+        tokens_out = int(usage.get("completion_tokens") or 0)
+        cost = (tokens_in * PRICE[0] + tokens_out * PRICE[1]) / 1e6
+        with self._lock:
+            host = self._by_host[completion.provider]
+            host["calls"] += 1
+            host["tokens_in"] += tokens_in
+            host["tokens_out"] += tokens_out
+            host["cost_usd"] += cost
+        _log(
+            {
+                "event": event,
+                "provider": completion.provider,
+                "tokens_in": tokens_in,
+                "tokens_out": tokens_out,
+                "cost_usd": round(cost, 5),
+            }
+        )
+
+    def totals(self) -> dict[str, dict[str, float]]:
+        with self._lock:
+            return {
+                name: {**host, "cost_usd": round(host["cost_usd"], 4)}
+                for name, host in self._by_host.items()
+            }
+
+
+def _log(record: dict[str, Any]) -> None:
+    """One JSON line on stdout, which the host keeps as the server log."""
+    print(json.dumps({"at": _iso(time.time()), **record}), flush=True)
 
 
 class VerifyRequest(BaseModel):
@@ -223,20 +335,61 @@ def _model_of(overseer: Overseer | None) -> str:
     return provider.model if isinstance(provider, Provider) else PROVIDER.model
 
 
+def _provider_of(overseer: Overseer) -> str:
+    provider = getattr(overseer.client, "provider", None)
+    return provider.name if isinstance(provider, Provider) else PROVIDER.name
+
+
+def _charge(spend: Spend, event: str, result: OverseerResult) -> None:
+    for attempt in result.attempts:
+        if attempt.completion is not None:
+            spend.add(event, attempt.completion)
+
+
+# The probe: one short request in the shape audits use (a tool on offer).
+_PROBE_MESSAGES = ({"role": "user", "content": "Call the ok tool."},)
+_PROBE_TOOL = {
+    "type": "function",
+    "function": {
+        "name": "ok",
+        "description": "Confirms the service is answering.",
+        "parameters": {"type": "object", "properties": {}},
+    },
+}
+
+
+def probe_for(overseer: Overseer | None) -> Callable[[], Completion] | None:
+    """One small call to ``overseer``'s host, or ``None`` if it has no real client."""
+    client = overseer.client if overseer is not None else None
+    if not isinstance(client, ModelClient):
+        return None
+    return lambda: client.complete(_PROBE_MESSAGES, [_PROBE_TOOL])
+
+
 def create_app(
     overseer: Overseer | None,
     limits: Limits | None = None,
     clock: Callable[[], float] = time.time,
     *,
     fallback: Overseer | None = None,
+    probe: Callable[[], Completion] | None = None,
+    probe_every: float = 3600,
 ) -> FastAPI:
     """The app. ``overseer`` is ``None`` when no API key is configured: the
     gallery and verifier still work, and live audits say they are off.
-    ``fallback`` audits on another host when ``overseer`` cannot be reached."""
+    ``fallback`` audits on another host when ``overseer`` cannot be reached.
+    ``probe`` is one small call to the primary host, for ``/api/health``."""
     limits = limits or Limits()
     budget = Budget(limits, clock)
     slots = threading.BoundedSemaphore(limits.max_concurrent)
     baseline, baseline_fallback = baseline_of(overseer), baseline_of(fallback)
+    spend = Spend()
+
+    def run_probe() -> None:
+        assert probe is not None
+        spend.add("probe", probe())
+
+    health = Health(run_probe if probe is not None else None, probe_every, clock)
     app = FastAPI(title="Pinpoint", docs_url=None, redoc_url=None, openapi_url=None)
 
     @app.middleware("http")
@@ -260,7 +413,16 @@ def create_app(
             "model": _model_of(overseer),
             "fallback": fallback is not None,
             "prompt_version": PROMPT_VERSION,
+            "spend_since_restart": spend.totals(),
         }
+
+    @app.get("/api/health")
+    def health_check() -> JSONResponse:
+        """200 while the primary host answers (or nothing is known yet), 503 if not."""
+        if overseer is None:
+            return JSONResponse({"ok": False, "provider": None}, status_code=503)
+        report = {"provider": _provider_of(overseer), **health.check()}
+        return JSONResponse(report, status_code=503 if report["ok"] is False else 200)
 
     @app.post("/api/verify")
     def verify_citation(body: VerifyRequest) -> dict[str, Any]:
@@ -300,6 +462,11 @@ def create_app(
                 compared = None if theirs is None else theirs.result()
         finally:
             slots.release()
+        # The primary answered unless the audit fell back or never reached it.
+        health.note(not fell_back and not unreachable(result))
+        _charge(spend, "audit", result)
+        if compared is not None:
+            _charge(spend, "baseline", compared[0])
         response = audit_response(trace, result)
         response["fell_back"] = fell_back
         response["baseline"] = None
@@ -352,7 +519,7 @@ def main() -> None:  # pragma: no cover - entry point
 
     load_env()
     primary, fallback = default_overseers()
-    app = create_app(primary, _limits_from_env(), fallback=fallback)
+    app = create_app(primary, _limits_from_env(), fallback=fallback, probe=probe_for(primary))
     uvicorn.run(
         app, host=os.environ.get("HOST", "127.0.0.1"), port=int(os.environ.get("PORT", "7860"))
     )

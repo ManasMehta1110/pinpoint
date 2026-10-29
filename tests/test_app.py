@@ -11,7 +11,7 @@ import threading
 from typing import Any
 
 import pytest
-from conftest import RECORDS, OracleModel
+from conftest import RECORDS, OracleModel, submit
 from fastapi.testclient import TestClient
 
 from app import examples as examples_mod
@@ -19,7 +19,7 @@ from app import server
 from app.examples import PICKS, BuildError, Pick, build_example
 from app.server import Budget, Limits, create_app
 from benchmark.fetch_data import DATA_DIR
-from pinpoint.client import ClientError
+from pinpoint.client import ClientError, Completion, ModelClient
 from pinpoint.overseer import Overseer
 
 DECEIVER = RECORDS[3]  # read_document "It was formed in 1945." at 2; answer 1950 at 3
@@ -604,3 +604,142 @@ def test_a_bad_log_is_refused_with_a_reason() -> None:
 
 def test_status_reports_the_daily_cap() -> None:
     assert make_client([], Limits(daily_cap=42)).get("/api/status").json()["daily_cap"] == 42
+
+
+# --- health and spend ------------------------------------------------------------------
+
+
+class Probe:
+    """A scripted probe: each call returns a completion or raises the next error."""
+
+    def __init__(self, *outcomes: BaseException | None) -> None:
+        self.outcomes = list(outcomes)
+        self.calls = 0
+
+    def __call__(self) -> Any:
+        self.calls += 1
+        outcome = self.outcomes.pop(0) if self.outcomes else None
+        if outcome is not None:
+            raise outcome
+        return submit({})
+
+
+def make_health_client(
+    probe: Probe | None, clock: Clock, script: list[Any] | None = None, **kwargs: Any
+) -> TestClient:
+    overseer = Overseer(OracleModel({DECEIVER["question"]: script or []}), mode="two_slot")
+    return TestClient(create_app(overseer, None, clock, probe=probe, probe_every=3600, **kwargs))
+
+
+def test_health_without_a_key_is_down() -> None:
+    assert make_client().get("/api/health").status_code == 503
+
+
+def test_health_probes_the_host() -> None:
+    probe = Probe()
+    response = make_health_client(probe, Clock()).get("/api/health")
+    assert response.status_code == 200 and response.json()["ok"] is True
+    assert probe.calls == 1
+
+
+def test_a_failed_probe_is_a_503_without_the_error() -> None:
+    probe = Probe(ClientError("baseten returned HTTP 402: credits exhausted, key sk-SECRET"))
+    response = make_health_client(probe, Clock()).get("/api/health")
+    assert response.status_code == 503 and response.json()["ok"] is False
+    assert "SECRET" not in response.text and "402" not in response.text
+
+
+def test_the_probe_runs_at_most_once_an_hour() -> None:
+    clock, probe = Clock(), Probe()
+    client = make_health_client(probe, clock)
+    for _ in range(5):
+        client.get("/api/health")
+    assert probe.calls == 1
+    clock.now += 3599
+    client.get("/api/health")
+    assert probe.calls == 1
+    clock.now += 1
+    client.get("/api/health")
+    assert probe.calls == 2
+
+
+def test_a_probe_in_flight_is_not_doubled() -> None:
+    started, release = threading.Event(), threading.Event()
+    calls = []
+
+    def slow() -> Any:
+        calls.append(1)
+        started.set()
+        release.wait(5)
+        return submit({})
+
+    app = create_app(
+        Overseer(OracleModel({}), mode="two_slot"), None, Clock(), probe=slow, probe_every=3600
+    )
+    client = TestClient(app)
+    first = threading.Thread(target=client.get, args=("/api/health",))
+    first.start()
+    assert started.wait(5)
+    second = client.get("/api/health")  # answers from what is known, at once
+    release.set()
+    first.join(5)
+    assert len(calls) == 1 and second.status_code == 200 and second.json()["ok"] is None
+
+
+def test_live_audits_tell_health_whether_the_primary_answered() -> None:
+    down = ClientError("baseten returned HTTP 503")
+    client = make_fallback_client([down, GOOD_AUDIT], [GOOD_AUDIT], Limits(daily_cap=5))
+    assert client.get("/api/health").json()["ok"] is None  # nothing known yet, no probe
+    client.post("/api/audit", json={"trace": TRACE})  # fell back: the primary is down
+    assert client.get("/api/health").status_code == 503
+    client.post("/api/audit", json={"trace": TRACE})  # the primary answered
+    assert client.get("/api/health").status_code == 200
+
+
+def test_a_bad_answer_still_means_the_host_answered() -> None:
+    client = make_fallback_client(["not json", "not json"], [])
+    client.post("/api/audit", json={"trace": TRACE})
+    assert client.get("/api/health").json()["ok"] is True
+
+
+def test_spend_is_totalled_and_logged(capsys: pytest.CaptureFixture[str]) -> None:
+    clock = Clock()
+    client = make_health_client(Probe(), clock, [GOOD_AUDIT])
+    client.get("/api/health")
+    client.post("/api/audit", json={"trace": TRACE})
+    totals = client.get("/api/status").json()["spend_since_restart"]
+    assert totals["fake"]["calls"] == 2  # the probe and the audit
+    assert totals["fake"]["tokens_in"] == 2000 and totals["fake"]["tokens_out"] == 400
+    assert totals["fake"]["cost_usd"] == pytest.approx(2 * (1000 * 1.25 + 200 * 4.25) / 1e6)
+    lines = [json.loads(line) for line in capsys.readouterr().out.splitlines()]
+    assert [r["event"] for r in lines] == ["probe", "audit"]
+    assert all(
+        set(r) == {"at", "event", "provider", "tokens_in", "tokens_out", "cost_usd"} for r in lines
+    )  # never the trace or the model's output
+
+
+def test_a_comparison_charges_both_audits() -> None:
+    client = make_client([BOTH, BOTH], Limits(daily_cap=5))
+    client.post("/api/audit", json={"trace": TRACE, "compare": True})
+    assert client.get("/api/status").json()["spend_since_restart"]["fake"]["calls"] == 2
+
+
+def test_probe_for_needs_a_real_client() -> None:
+    assert server.probe_for(None) is None
+    assert server.probe_for(Overseer(OracleModel({}), mode="two_slot")) is None
+    sent: list[Any] = []
+
+    class Unconnected(ModelClient):
+        """A ModelClient that never connects: no key, no network."""
+
+        def __init__(self) -> None:
+            pass
+
+        def complete(self, messages: Any, tools: Any) -> Completion:
+            sent.append((messages, tools))
+            return submit({})
+
+    probe = server.probe_for(Overseer(Unconnected(), mode="two_slot"))
+    assert probe is not None
+    probe()
+    assert len(sent) == 1 and sent[0][1][0]["function"]["name"] == "ok"

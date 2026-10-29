@@ -116,6 +116,12 @@ python -m venv .venv
   with a `data-num` / `data-kn` / `data-pct` / `data-count` attribute;
   `tests/test_stats.py` checks every path exists and every fallback matches.
   Rebuild both JSON files whenever runs change.
+- `/api/health` (DEVLOG Oct 29 11:35): 503 while Baseten is not answering,
+  from live audits and a probe at most once per hour (the slot is claimed
+  under the lock). It exists because the Fireworks fallback hides a dead
+  Baseten key, and the open-weight bonus is checked from Baseten's records.
+  Never expose the provider's error text there; it goes to the log only.
+  Every model call logs one JSON line (tokens, cost), never trace content.
 - `/api/audit` with `compare: true` also runs `mode="single"` in parallel and
   counts as two audits.
 - Only verified citations are highlighted. Page text from traces goes into

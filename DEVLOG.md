@@ -1553,21 +1553,64 @@ and a fixed-rule floor", not state of the art.
   new section, and the "verifier was never needed" paragraph rewritten.
 - 979 tests, ruff, ruff format, mypy strict: clean.
 
+### 11:35 · Watching Baseten: `/api/health` and a spend log · (uncommitted)
+
+**Why.** Baseten's dashboard shows no credit balance, and the demo silently
+falls back to Fireworks when Baseten fails, so an exhausted key would go
+unnoticed while the open-weight bonus (checked from Baseten's records) needs
+Baseten calls through Nov 8. Spend recorded in the repo so far: $34.73
+(audit runs $20.83, Who&When $13.43, smoke $0.17, agent turns $0.30), plus
+unrecorded live-demo use; about $60-65 of $100 left. The live daily cap is
+now 100 (`PINPOINT_DAILY_CAP` on Render, checked on `/api/status`).
+
+**What.**
+- `GET /api/health`: 200 while the primary host answers, 503 if not, `ok:
+  null` until anything is known. Learned from live audits (a fallback or an
+  unreachable primary is a failure; a bad answer is not) and from a probe:
+  one short request with one tool, at most once an hour however often the
+  URL is hit. Only ok/failing and timestamps are public; the provider's
+  error text goes to the server log.
+- Every model call (audit, baseline, probe) prints one JSON line: time,
+  event, provider, tokens, cost. Never trace content. `/api/status` adds
+  `spend_since_restart` by host.
+
+**Real checks.** Local server with the real keys: the probe answered in 3 s
+for $0.002 (611 tokens in, 289 out), so hourly probing costs about $0.05 a
+day; a second request within the hour made no call. With a deliberately
+wrong Baseten key: 503, and the log line "baseten rejected the API key
+(HTTP 401)".
+
+**Audit.** 10 new tests (no key, success, failure without leaking the error,
+the hourly limit, no doubled probe, audits updating health, a bad answer
+still counting as answered, spend totals and log fields, comparisons charged
+twice, the probe sending its tool). Mutation testing 8/8 killed. The first
+round had a survivor: a second lock meant to stop concurrent probes was
+redundant except in a tiny race window, so no test could see it. Replaced by
+claiming the probe slot under the state lock, which is simpler and closes the
+window; its mutant is killed. 989 tests, ruff, mypy strict: clean.
+
+**For Manas.** Add a free UptimeRobot HTTP monitor on
+`https://pinpoint-1sjo.onrender.com/api/health`, every 5 minutes, with email
+alerts. It alerts on any 503 and keeps Render's free instance awake.
+
 ---
 
 ## Next
 
 In order, from Oct 29:
-1. Bias fix: an `offenses` list mode (each item verified), pre-registered on a
-   new fresh mid-trace set plus GroundingBench with the same 99% bar, and
-   precision measured (extra offenses, honest traces). About $6.
+1. Public demo repository using the Action; then the Marketplace listing.
 2. ImpossibleBench: the Muse Spark Open agent in Modal on pinned
    single-file impossible tasks, audited by Pinpoint, pre-registered.
-3. Public demo repository using the Action; then the Marketplace listing.
-4. Long-log diagnosis on Who&When hand-crafted misses (offline, free): how
-   far off, earlier or later, right agent. A fix only as a new experiment.
-5. Muse Glimmer 30B: on-demand only on Fireworks (no serverless), billed per
+3. Muse Glimmer 30B: on-demand only on Fireworks (no serverless), billed per
    GPU-second, about $8/hour on one H100/H200. Idle deployments bill for an
    hour before scaling to zero: delete right after the run. Roughly $10-20.
-6. Video script (Oct 30). Pinger on `/api/status`. Muse Spark once the card
-   hold succeeds.
+4. Bias fix: an `offenses` list mode (each item verified), pre-registered on a
+   new fresh mid-trace set plus GroundingBench with the same 99% bar, and
+   precision measured (extra offenses, honest traces). About $6.
+5. Long-log diagnosis on Who&When hand-crafted misses (offline, free): how
+   far off, earlier or later, right agent. A fix only as a new experiment.
+6. Video script (Oct 30). Muse Spark once the card hold succeeds.
+
+Order by estimated gain per hour (self-assessment, Oct 29 00:40): the Action
+repository and ImpossibleBench serve Impact (30%); Glimmer serves Use of Meta
+AI; the bias fix mostly closes a caveat.

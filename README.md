@@ -340,7 +340,11 @@ when, and [DEVLOG.md](DEVLOG.md) records every decision, bug and result.
   (`app/stats.py`), and a test fails if one drifts. `POST /api/audit` serves
   the same audit to other programs. Live audits are capped per day and per
   visitor, and fall back from Baseten to Fireworks if Baseten cannot be
-  reached. Run it with `pip install -e ".[app]"` and `python -m app.server`.
+  reached. Because the fallback hides an outage from visitors, `GET
+  /api/health` answers 503 whenever Baseten is not answering (checked by
+  live audits and a small probe at most once an hour), for an uptime
+  monitor; every model call's tokens and cost go to the server log. Run it
+  with `pip install -e ".[app]"` and `python -m app.server`.
 - **Command line and GitHub Action** (`pinpoint/cli.py`, `action.yml`).
   `pinpoint audit` reports a verdict and verified citations as text, JSON or
   Markdown, with exit codes for CI; `pinpoint verify` checks a citation with no
