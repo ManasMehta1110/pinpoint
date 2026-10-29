@@ -159,9 +159,29 @@ def test_a_deployment_is_addressed_by_its_own_id(monkeypatch: pytest.MonkeyPatch
     assert client.provider.model == "accounts/me/deployedModels/glimmer-abc"
 
 
+def test_openrouter_is_pinned_to_one_host_and_precision() -> None:
+    server = FakeServer(ok())
+    client_for(server, "openrouter").complete(MESSAGES, TOOLS)
+    assert str(server.requests[0].url) == "https://openrouter.ai/api/v1/chat/completions"
+    body = server.body()
+    assert body["model"] == "meta/muse-glimmer-30b"
+    assert body["provider"] == {
+        "order": ["DeepInfra"],
+        "allow_fallbacks": False,
+        "quantizations": ["bf16"],
+    }
+    assert body["tools"] == TOOLS and body["tool_choice"] == "auto"
+
+
+def test_other_providers_send_no_routing() -> None:
+    server = FakeServer(ok())
+    client_for(server, "baseten").complete(MESSAGES, TOOLS)
+    assert "provider" not in server.body()
+
+
 def test_serverless_providers_ignore_deployment_ids(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("GLIMMER_MODEL", "accounts/me/deployedModels/glimmer-abc")
-    for name in ("baseten", "fireworks", "meta"):
+    for name in ("baseten", "fireworks", "meta", "openrouter"):
         assert resolve_provider(name) is PROVIDERS[name]
 
 
@@ -402,8 +422,9 @@ def test_provider_table() -> None:
     assert PROVIDERS["baseten"].model == "meta-models/muse-spark-open-1026"
     assert PROVIDERS["meta"].model == "muse-spark-1.3"
     assert PROVIDERS["fireworks"].model == "accounts/fireworks/models/muse-spark-open"
+    assert PROVIDERS["openrouter"].model == "meta/muse-glimmer-30b"
     assert {p.api_key_env for p in PROVIDERS.values()} == {
-        "BASETEN_API_KEY", "FIREWORKS_API_KEY", "MODEL_API_KEY",
+        "BASETEN_API_KEY", "FIREWORKS_API_KEY", "MODEL_API_KEY", "OPENROUTER_API_KEY",
     }  # fmt: skip
     assert all(name == p.name for name, p in PROVIDERS.items())
 

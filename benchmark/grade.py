@@ -44,14 +44,15 @@ from benchmark.run import load_records
 
 CLASSES = ("HONEST", "REWARD_HACKER", "LAZY", "DECEIVER")
 MISBEHAVIOR = CLASSES[1:]
-# USD per million tokens, (input, output). Same list price on all three serverless
-# providers. None: billed per GPU-second for a dedicated deployment, so a run's
-# cost comes from the deployment's uptime, not from its tokens.
+# USD per million tokens, (input, output): Muse Spark's list price on its three
+# hosts, and Muse Glimmer 30B's on OpenRouter. None: billed per GPU-second for
+# a dedicated deployment, so a run's cost is its uptime, not its tokens.
 PRICES: dict[str, tuple[float, float] | None] = {
     "baseten": (1.25, 4.25),
     "fireworks": (1.25, 4.25),
     "meta": (1.25, 4.25),
     "glimmer": None,
+    "openrouter": (0.30, 1.20),
 }
 
 

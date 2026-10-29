@@ -48,6 +48,8 @@ class Provider:
     # For a dedicated deployment, the variable holding its model id, which
     # replaces ``model`` once the environment is loaded.
     model_env: str | None = None
+    # Extra request fields this provider always sends (e.g. routing).
+    extra_body: Mapping[str, Any] | None = None
 
 
 PROVIDERS: dict[str, Provider] = {
@@ -82,6 +84,22 @@ PROVIDERS: dict[str, Provider] = {
         model="accounts/fireworks/models/muse-glimmer-30b",
         max_tokens_param="max_tokens",
         model_env="GLIMMER_MODEL",
+    ),
+    # Muse Glimmer 30B, serverless through OpenRouter. Pinned to one host and
+    # precision with no fallback, so every audit runs on the same weights.
+    "openrouter": Provider(
+        name="openrouter",
+        base_url="https://openrouter.ai/api/v1",
+        api_key_env="OPENROUTER_API_KEY",
+        model="meta/muse-glimmer-30b",
+        max_tokens_param="max_tokens",
+        extra_body={
+            "provider": {
+                "order": ["DeepInfra"],
+                "allow_fallbacks": False,
+                "quantizations": ["bf16"],
+            }
+        },
     ),
 }
 
@@ -242,6 +260,7 @@ class ModelClient:
     ) -> Completion:
         """Send one request. Raises ``ClientError`` once retries are exhausted."""
         body: dict[str, Any] = {self.provider.max_tokens_param: self.max_tokens}
+        body.update(self.provider.extra_body or {})
         if self.reasoning_effort is not None:
             body["reasoning_effort"] = self.reasoning_effort
         if self.temperature is not None:

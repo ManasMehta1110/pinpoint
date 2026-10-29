@@ -1748,24 +1748,50 @@ serverless providers unchanged), for `run.py` recording the deployment's id
 and refusing without it, and for GPU-billed runs never showing $0. Mutation
 testing 4/4 killed. 1004 tests, ruff, mypy strict: clean.
 
+### 13:37 · Glimmer amendment: OpenRouter instead of a Fireworks deployment · (uncommitted)
+
+Before any audit ran. Fireworks requires billing details on the account to
+create a deployment, even when credits pay for it, and the card that failed
+on the Meta Model API is the only one available. OpenRouter serves the same
+model serverless (`meta/muse-glimmer-30b`, $0.30 / $1.20 per million tokens
+in / out) and takes UPI.
+
+**What changes.** Host and billing only. New provider `openrouter`, pinned to
+one host and precision with no fallback (`provider: {order: [DeepInfra],
+allow_fallbacks: false, quantizations: [bf16]}`), so every audit runs on the
+same BF16 weights; OpenRouter also lists Together, at an unknown precision.
+Token cost is computable again (`grade.PRICES["openrouter"]`). The
+`glimmer` (Fireworks deployment) provider stays, unused.
+
+**What does not.** Runs, measures, thresholds, prompt v4, retries 0,
+default reasoning, the 600 / 36 / 12 traces: as registered at 13:21.
+
+**Seen so far.** One tool-call probe ("Call the ok tool"), to check the
+route: DeepInfra answered with the `ok` call (379 tokens in, 116 out of which
+91 reasoning, $0.00025). No trace has been audited.
+
+**Audit.** Tests: the request goes to OpenRouter with the routing block,
+other providers send none, the provider table pins the new key and model.
+Mutation: dropping the routing and allowing fallbacks are both caught. 1006
+tests, ruff, mypy strict: clean. Expected cost of all runs: about $2-3.
+
 ---
 
 ## Next
 
-In order, from Oct 29:
-1. Done: demo repository (12:32), Marketplace release v1.0.0 (13:02).
-2. ImpossibleBench: the Muse Spark Open agent in Modal on pinned
+From Oct 30, in order:
+1. Glimmer (Manas: add $5 OpenRouter credit by UPI): check the credit on the
+   key, then the 5-trace smoke, then the registered runs (13:21, amended
+   13:37) with `--provider openrouter`, each from a clean tree. About $2-3.
+2. Video script and recording (Oct 30, as planned).
+3. ImpossibleBench: the Muse Spark Open agent in Modal on pinned
    single-file impossible tasks, audited by Pinpoint, pre-registered.
-3. Muse Glimmer 30B: on-demand only on Fireworks (no serverless), billed per
-   GPU-second, about $8/hour on one H100/H200. Idle deployments bill for an
-   hour before scaling to zero: delete right after the run. Roughly $10-20.
 4. Bias fix: an `offenses` list mode (each item verified), pre-registered on a
    new fresh mid-trace set plus GroundingBench with the same 99% bar, and
    precision measured (extra offenses, honest traces). About $6.
-5. Long-log diagnosis on Who&When hand-crafted misses (offline, free): how
-   far off, earlier or later, right agent. A fix only as a new experiment.
-6. Video script (Oct 30). Muse Spark once the card hold succeeds.
+5. Long-log diagnosis on Who&When hand-crafted misses (offline, free).
+6. Small: MIT licence in the demo repository (asked, not answered); README
+   opening so a judge reading one screen gets the headline results.
 
-Order by estimated gain per hour (self-assessment, Oct 29 00:40): the Action
-repository and ImpossibleBench serve Impact (30%); Glimmer serves Use of Meta
-AI; the bias fix mostly closes a caveat.
+Done Oct 29: Baseten watch and UptimeRobot, repeatability check, tab icon,
+Action demo repository, Marketplace v1.0.0, Glimmer pre-registration.
