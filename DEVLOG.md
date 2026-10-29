@@ -1691,6 +1691,10 @@ remains as an override. Checked by running the step's script against the
 local repository in a fresh venv. New `tests/test_action.py`: inputs reach
 scripts only through `env:`, the default install, Node 24 actions.
 
+The Marketplace form then refused `action.yml`: the description must be
+under 125 characters (it was about 150). Shortened to 122, and a test now
+pins the limit; it caught a first rewrite at 126.
+
 ---
 
 ## Next

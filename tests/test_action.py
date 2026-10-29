@@ -21,6 +21,12 @@ def steps(action: dict[str, Any]) -> list[dict[str, Any]]:
     return list(action["runs"]["steps"])
 
 
+def test_the_marketplace_accepts_the_metadata(action: dict[str, Any]) -> None:
+    # GitHub Marketplace refuses a description of 125 characters or more.
+    assert len(action["description"]) < 125
+    assert action["name"] and action["branding"]["icon"] and action["branding"]["color"]
+
+
 def test_inputs_reach_the_shell_only_through_env(action: dict[str, Any]) -> None:
     # A crafted input pasted into a script could inject shell commands.
     for step in steps(action):

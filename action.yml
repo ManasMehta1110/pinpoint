@@ -1,7 +1,7 @@
 name: Pinpoint agent audit
 description: >-
-  Audit an AI agent's log with Pinpoint on Meta's Muse Spark Open, and fail the
-  check when it finds misbehavior with citations verified against the log.
+  Fail the check when an AI agent misbehaved, quoting the exact step, verified
+  against its log. Uses Meta's Muse Spark Open.
 branding:
   icon: crosshair
   color: red
