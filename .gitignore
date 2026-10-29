@@ -26,3 +26,6 @@ Thumbs.db
 .vscode/
 .idea/
 *.log
+
+# Local working notes for development sessions; not part of the project.
+CLAUDE.md

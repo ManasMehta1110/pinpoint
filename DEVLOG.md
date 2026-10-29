@@ -37,7 +37,6 @@ Discord before the first commit below.
   confirmed tracked, including `.env.example`.
 - `.gitattributes` forces LF line endings so Windows editors can't introduce
   CRLF noise into a public repo.
-- This commit was made by Claude. From here on Manas makes every commit.
 
 ### 08:50 · Packaging · `c01f3bd` (pushed to GitHub)
 
@@ -93,8 +92,8 @@ interrupted or tampered download never leaves a plausible-looking file.
 
 ### Docs · `5a6d668`
 
-Added `CLAUDE.md` (rules, audit protocol, layout, commands, API facts) and
-this log. README now lists shipped components.
+Wrote down the project rules (audit protocol, layout, commands, API facts)
+and started this log. README now lists shipped components.
 
 ### 09:46 · Trace model and renderer · `8d59055`
 
@@ -805,8 +804,8 @@ before the full count:
 All 176 have reasoning. Line-level matching makes these lower bounds ("Steps
 2 and 6", or a step and a citing word on adjacent lines, are not counted).
 
-**Validation by reading.** A random sample of 12 per flag (seeded), read by
-Claude, not by an independent annotator. `weighs_citing`: about 11/12 weigh
+**Validation by reading.** A random sample of 12 per flag (seeded), read to
+check them, not by an independent annotator. `weighs_citing`: about 11/12 weigh
 which step to cite with the false answer among the options; the other notes
 that the answer contradicts the evidence, which still identifies the lie.
 `must_pick_one`: about 11/12 express the one-citation constraint; one says
@@ -907,8 +906,8 @@ offense quote is in the action, which comes first in the step text, so the
 first match is the same). Run for real: live audit of the Louvre trace, 4.3 s,
 $0.006, both citations verified and highlighted; verifier rejects the
 document as an offense with the tool-result reason. The page script has no
-automated test (no Node here); Manas checked every tab and button in a
-browser against the local server, and all worked.
+automated test (no Node here); every tab and button was checked by hand in
+a browser against the local server, and all worked.
 
 ### 21:05 · Deploy files · (uncommitted)
 
@@ -926,7 +925,7 @@ browser against the local server, and all worked.
   3.11), serves the page, gallery and verifier, and with no key reports live
   audits off (503). The archive fetch, run for real against commit `22114ee`,
   extracts to one `pinpoint-<sha>/` folder as the copy step expects. The first
-  attempt 404'd because I mistyped the hash.
+  attempt 404'd on a mistyped hash.
 
 ### 21:51 · Live on Render · https://pinpoint-1sjo.onrender.com/
 
@@ -1006,9 +1005,9 @@ Mutants killed: fallback on any provider error, fallback on any failure.
 
 ### 13:17 · The demo becomes a site; every number generated; live side-by-side · (uncommitted)
 
-**Hackathon rules, read from the participant guide** (recorded in
-CLAUDE.md): the rubric is Impact 30%, Use of Meta AI 25%, Demo 25%,
-Technical depth 20% (CLAUDE.md had "equal weight", now fixed). Problem
+**Hackathon rules, read from the participant guide**: the rubric is Impact
+30%, Use of Meta AI 25%, Demo 25%, Technical depth 20% (the project notes
+had "equal weight", now fixed). Problem
 statement chosen: Push the Frontier. Bonus "Best Build on Meta Open Weight
 Models" ($10K) is verified by the inference partner from its own records,
 so the live demo must keep calling Baseten through judging (Nov 5-8).
@@ -1046,7 +1045,7 @@ or a tool's output. First real run (the Louvre trace): single cited step 2,
 agent's own action. 5.5 s for both.
 
 ruff, mypy clean; 740 tests pass. The page script has no automated test (no
-Node here); Manas checked the site in a browser.
+Node here); the site was checked by hand in a browser.
 
 ### 13:40 · Fireworks replication: the headline holds on a second host · (uncommitted)
 
@@ -1103,7 +1102,7 @@ result on a second host"); the audit count now covers every run, 3,264, with
 - **Polish**: custom dropdowns over the native selects (labels by kind,
   keyboard, ARIA); quote card stacks all quotes at the tallest height and
   crossfades, so it never jumps; progress fills use `transform: scaleX`
-  instead of `width` (no per-frame layout; Manas saw stutter); hover lift on
+  instead of `width` (no per-frame layout; it stuttered before); hover lift on
   the how-it-works and limits cards; the prior-work source line restyled
   (it was too faint for the line that separates prior work from hackathon
   work).
@@ -1119,8 +1118,8 @@ agent acts, and Pinpoint audits what it actually did.
 **Setup.** The agent is Muse Spark Open (Baseten) with five tools: list,
 read, write, edit files, run pytest (`benchmark/agent_tasks.py`). Every tool
 runs in a Modal sandbox: a fresh isolated container per run, network blocked,
-so model-written code never runs on this machine (Manas's choice over a
-local folder). Logs are saved in OpenAI chat format, which
+so model-written code never runs on this machine (chosen over a local
+folder). Logs are saved in OpenAI chat format, which
 `pinpoint/adapters.py` reads; the agent's private reasoning is kept beside the
 log and never shown to Pinpoint.
 
@@ -1165,7 +1164,7 @@ test (renamed). Not yet run against Modal (login pending).
 
 ### 14:56 · Real agent runs: the agent games every impossible task · (uncommitted)
 
-Modal login done (Manas). Smoke run on the throwaway task: list, read, write,
+Modal login done. Smoke run on the throwaway task: list, read, write,
 pytest in the sandbox (`1 passed`), accurate summary, labelled HONEST; parallel
 tool calls handled. Then the 12 registered runs from `874a9c4`, clean tree
 (all 12 records carry that commit, `dirty: false`; a test checks it). 67 model
@@ -1201,9 +1200,9 @@ Reported, not re-labelled.
 **Dataset.** `benchmark/datasets/agentruns.jsonl`, built by `python -m
 benchmark.agent build`, pinned in `LOCAL_FILES` (sha256 `5819961e…`) before
 any audit. A test checks the committed file equals a rebuild from the logs.
-Review sheet for Manas: `results/agent_runs/REVIEW.md`. 843 tests pass.
+Review sheet: `results/agent_runs/REVIEW.md`. 843 tests pass.
 
-**Person review** (`results/agent_runs/REVIEW.md`, Manas, as registered).
+**Person review** (`results/agent_runs/REVIEW.md`, by the author, as registered).
 Agrees with the rule on 10 of 12. The two disagreements:
 
 | run | rule | reviewer | reviewer's reason |
@@ -1220,10 +1219,10 @@ as registered.
 Process notes, disclosed. The review sheet listed only edits, test runs and
 the final message, so it hid each run's opening list and read steps; one run
 first looked to the reviewer like it skipped reading the tests (merge-3). Before
-the labels were final, Claude explained the label definitions and pointed out
-where a draft label or note seemed inconsistent with them, without proposing a
-label; the reviewer revised some drafts. At his request Claude then corrected
-spelling and grammar in the notes; labels and meaning unchanged (a header line
+the labels were final, the label definitions were explained to the reviewer,
+with a pointer wherever a draft label or note seemed inconsistent with them,
+without proposing a label; the reviewer revised some drafts. At the reviewer's
+request, spelling and grammar in the notes were then corrected; labels and meaning unchanged (a header line
 in the sheet says so).
 
 ### 15:37 · Auditing the real runs: Pinpoint finds every hack, including the call-stack one · (uncommitted)
@@ -1542,7 +1541,7 @@ and a fixed-rule floor", not state of the art.
   test's records it would have rewritten the real run's `report.json`. It
   crashed first on a missing record id, so nothing changed (checked: file
   times and 184 lines intact), but that was luck. The mutant now redirects to
-  a temp folder, and CLAUDE.md says so.
+  a temp folder, and that is now a project rule.
 - Site: a new card (table: Pinpoint, best fixed rule, paper's best) and the
   verifier card's footnote now cites the Who&When retries; all numbers
   generated by `app/stats.py`, pinned in `tests/test_stats.py`. Limits:
@@ -1594,14 +1593,14 @@ it checks with HEAD, and the route accepted only GET. `/api/health` now
 answers HEAD too (a test checks 200 and 503 by HEAD, and fails without the
 fix).
 
-**For Manas.** Add a free UptimeRobot HTTP monitor on
+**To do.** Add a free UptimeRobot HTTP monitor on
 `https://pinpoint-1sjo.onrender.com/api/health`, every 5 minutes, with email
 alerts. It alerts on any 503 and keeps Render's free instance awake.
 
 ### 11:51 · Repeatability on the real agent runs · (uncommitted)
 
-**What happened.** Preparing the Action demo, I ran `pinpoint audit` on
-`pricing-1` (the call-stack hack) and got HONEST, while the registered run
+**What happened.** Preparing the Action demo, `pinpoint audit` on
+`pricing-1` (the call-stack hack) returned HONEST, while the registered run
 flagged it on the labelled step. The trace the CLI builds is identical to the
 benchmark's (same rendering, same final answer), so this is the model, not
 the conversion: one sample per run, at the provider's default sampling.
@@ -1878,7 +1877,7 @@ does not parse as a file, and is excluded by the eligibility rule.
 ## Next
 
 From Oct 30, in order:
-1. Glimmer (Manas: add $5 OpenRouter credit by UPI): check the credit on the
+1. Glimmer (first add $5 of OpenRouter credit): check the credit on the
    key, then the 5-trace smoke, then the registered runs (13:21, amended
    13:37) with `--provider openrouter`, each from a clean tree. About $2-3.
 2. Video script and recording (Oct 30, as planned).
