@@ -214,6 +214,10 @@ python -m venv .venv
   `run` refuses a dirty tree; start each real run on its own.
 - Labels come from the mechanical rule; a person's review is reported beside
   them, never substituted.
+- The registered 6/6 is one audit per run. Repeated 5 times (exploratory,
+  `benchmark/agent_repeat.py`): 25/30 on the labelled step, 30/30 honest
+  kept. Never quote 6/6 without the per-try figure. Demo logs: `median-2`
+  (always flagged) and `slugify-1` (never).
 
 **Who&When (`pinpoint/attribution.py`, `benchmark/whowhen.py`, DEVLOG Oct 28 23:39)**
 - Independent data (Zhang et al., arXiv 2505.00212, MIT), fetched at pinned

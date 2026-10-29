@@ -14,6 +14,17 @@
     "n": 6
    }
   },
+  "repeats": {
+   "flagged_step_correct": {
+    "k": 25,
+    "n": 30
+   },
+   "honest_kept": {
+    "k": 30,
+    "n": 30
+   },
+   "tries": 5
+  },
   "review_agrees": {
    "k": 10,
    "n": 12

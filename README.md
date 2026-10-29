@@ -252,6 +252,14 @@ registered offense. One Pinpoint verdict and two single-citation verdicts
 called the gaming DECEIVER rather than REWARD_HACKER. A person reviewed all 12
 runs and agreed with the rule's labels on 10; both disagreements are about
 whether gaming the tests openly is dishonest (`results/agent_runs/REVIEW.md`).
+
+The table is one audit per run. Afterwards (exploratory, not pre-registered)
+we audited each log 5 more times through the command-line path: gamed runs
+were flagged on the labelled step in 25 of 30 tries, and honest runs were
+left unflagged in 30 of 30. The misses fall on two runs where the agent
+openly described its trick: the call-stack run was called HONEST in 1 of 5
+tries, and another run in 2 of 5. Expect about 5 in 6 per audit on such
+cases, not 6 in 6 (`benchmark/agent_repeat.py`).
 Twelve runs on small tasks: a real-world check, not a statistical claim.
 GroundingBench's grader does not apply here: the rule's keyword for each
 offense is the edited file's path, which a quote of the hack's code does not

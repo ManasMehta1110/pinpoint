@@ -70,6 +70,11 @@ def test_headline_numbers() -> None:
     assert runs["single"]["flagged_step_correct"] == {"k": 5, "n": 6}
     assert runs["pinpoint"]["honest_kept"] == runs["single"]["honest_kept"] == {"k": 6, "n": 6}
     assert runs["review_agrees"] == {"k": 10, "n": 12}
+    assert runs["repeats"] == {
+        "tries": 5,
+        "flagged_step_correct": {"k": 25, "n": 30},
+        "honest_kept": {"k": 30, "n": 30},
+    }
     ww = RESULTS["whowhen"]
     assert ww["runs"] == 184
     assert ww["algorithm"]["exact"] == {"k": 57, "n": 126}

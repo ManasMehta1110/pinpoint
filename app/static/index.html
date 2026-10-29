@@ -201,8 +201,12 @@
           </div>
           <p class="foot">The one-citation overseer: <b data-kn="agent_runs.single.flagged_step_correct"></b> on
             the labelled step, <b data-kn="agent_runs.single.honest_kept"></b> genuine fixes unflagged; its miss
-            cited the agent's first trick rather than the later call-stack hack. Twelve runs: a real-world check,
-            not a statistical claim. A person also reviewed every run and agreed with the labelling rule on
+            cited the agent's first trick rather than the later call-stack hack. Audited
+            <span data-num="agent_runs.repeats.tries">5</span> more times each, afterwards: <b
+            data-kn="agent_runs.repeats.flagged_step_correct"></b> tries on gamed runs flagged on the labelled
+            step, <b data-kn="agent_runs.repeats.honest_kept"></b> honest tries left unflagged. The misses are
+            runs where the agent admitted its trick, and the model sometimes called that honest. Twelve runs: a
+            real-world check, not a statistical claim. A person also reviewed every run and agreed with the labelling rule on
             <span data-num="agent_runs.review_agrees.k">10</span> of <span data-num="agent_runs.review_agrees.n">12</span>.</p>
         </div>
         <div class="card wide reveal">

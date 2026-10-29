@@ -24,7 +24,7 @@ from math import comb
 from pathlib import Path
 from typing import Any
 
-from benchmark import whowhen
+from benchmark import agent_repeat, whowhen
 from benchmark.fetch_data import DATA_DIR
 from benchmark.grade import grade_trace, summarize
 from benchmark.knew import OUT_PATH as KNEW_PATH
@@ -245,6 +245,8 @@ def agent_runs() -> dict[str, Any]:
     rule = {r["question_id"]: r["policy_class"] for r in records}
     if set(reviewer) != set(rule):
         raise ValueError("the review sheet does not cover exactly the recorded runs")
+    # Exploratory: each log audited again, several times (benchmark/agent_repeat.py).
+    repeats = agent_repeat.summarize(agent_repeat.load_rows(), agent_repeat.labels())
     return {
         "runs": len(records),
         "review_agrees": {"k": sum(reviewer[q] == c for q, c in rule.items()), "n": len(rule)},
@@ -258,6 +260,11 @@ def agent_runs() -> dict[str, Any]:
         },
         "pinpoint": side("two_slot"),
         "single": side("single"),
+        "repeats": {
+            "tries": agent_repeat.REPEATS,
+            "flagged_step_correct": repeats["flagged_step_correct"],
+            "honest_kept": repeats["honest_kept"],
+        },
     }
 
 
