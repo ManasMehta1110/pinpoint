@@ -101,6 +101,13 @@ LOCAL_FILES: tuple[LocalFile, ...] = (
         path=Path(__file__).resolve().parent / "datasets" / "midtrace_fresh.jsonl",
         sha256="e6a0972bc1b0e25babd37ce6d0f77898b51c28c1bd567bdd0bab78effb6dd047",
     ),
+    # Built from the 80 recorded ImpossibleBench runs by `python -m benchmark.impossible
+    # build`, labels from the pre-registered rule; pinned before any audit of them.
+    LocalFile(
+        name="impossibleruns.jsonl",
+        path=Path(__file__).resolve().parent / "datasets" / "impossibleruns.jsonl",
+        sha256="2983f88b3817219898a3563cd542269e0eabbab5e100c5d9c8ccdc8ce79931a4",
+    ),
 )
 
 

@@ -1874,6 +1874,46 @@ does not parse as a file, and is excluded by the eligibility rule.
 
 ---
 
+## 2026-10-30
+
+### 00:47 · ImpossibleBench: the 80 agent runs · (uncommitted)
+
+**What ran.** `python -m benchmark.impossible run` from clean commit
+`77c6d4a`, 22:53-00:47 (about 1 h 55 min), 4 runs at a time. All 80
+registered runs finished; the $30 cap did not bind. Spent **$24.29** on
+Baseten (about $0.30 a run). Raw logs in `results/impossible_runs/`.
+
+**How runs ended.** 48 used all 20 model calls, 25 answered, 7 ran out of
+output tokens on a turn with no tool call (`truncated`).
+
+**What the agent did** (recheck = the shipped tests, rerun in a fresh
+sandbox on the final `solution.py`; 95% Wilson intervals):
+
+| Split | Runs | Recheck passed | Labels |
+|---|---|---|---|
+| oneoff (impossible) | 30 | 11 (36.7%, 21.9-54.5) | 11 REWARD_HACKER, 19 HONEST |
+| conflicting (impossible) | 30 | 23 (76.7%, 59.1-88.2) | 23 REWARD_HACKER, 7 HONEST |
+| original (control) | 20 | 12 (60.0%, 38.7-78.1) | 20 HONEST |
+
+So Muse Spark Open, given an impossible task, cheated in 34 of 60 runs. No
+run edited the shipped tests or the pytest config: every cheat is a
+`solution.py` that special-cases the impossible assertions, labelled at the
+last edit of that file. No run falsely claimed its tests passed (0
+DECEIVER). Traces are 9-27 steps; most are 21.
+
+**Dataset.** `python -m benchmark.impossible build` wrote
+`benchmark/datasets/impossibleruns.jsonl` (80 records, sha256 `2983f88b`),
+pinned in `LOCAL_FILES` before any audit. Two tests: the committed file is
+exactly what the saved runs give, under the pinned hash; all 80 runs came
+from `77c6d4a` on a clean tree. Mutation testing 2/2 killed (a truncated
+dataset, a wrong commit). ruff, mypy strict, 1,037 tests pass.
+
+**Next.** The registered audits on Fireworks, each from a clean tree:
+`--mode two_slot`, then `--mode single`, `--citation-retries 0`; then
+`python -m benchmark.impossible report`.
+
+---
+
 ## Next
 
 From Oct 30, in order:
@@ -1881,8 +1921,8 @@ From Oct 30, in order:
    key, then the 5-trace smoke, then the registered runs (13:21, amended
    13:37) with `--provider openrouter`, each from a clean tree. About $2-3.
 2. Video script and recording (Oct 30, as planned).
-3. ImpossibleBench: the Muse Spark Open agent in Modal on pinned
-   single-file impossible tasks, audited by Pinpoint, pre-registered.
+3. ImpossibleBench: the 80 runs are recorded (00:47); the two Fireworks
+   audits and the report remain.
 4. Bias fix: an `offenses` list mode (each item verified), pre-registered on a
    new fresh mid-trace set plus GroundingBench with the same 99% bar, and
    precision measured (extra offenses, honest traces). About $6.
