@@ -1961,6 +1961,22 @@ breakdown (mutation testing 5/5 killed after adding an answered-and-flagged
 case; the first version let one mutant through), the site numbers pinned.
 ruff, mypy strict, 1,038 tests pass. Page checked in headless Edge.
 
+### Afternoon · Demo video and README opening · (uncommitted)
+
+**Video.** The 3-minute demo video is made (2:45, kept outside the
+repository). It opens with a card, as the hackathon FAQ requires, stating what
+was built this week (Pinpoint, its verifier, every experiment, the live site,
+the GitHub Action) and what was pre-existing (GroundingBench, used only as
+test data). Its live-demo segment is a real audit on the deployed site, sped
+up and labelled as such.
+
+**README.** A "built during the hackathon / pre-existing" line under the title,
+matching the video, and a "Results at a glance" section so the headline
+results fit on the first screen. The demo-PR paragraph no longer names one
+exact quoted line: each Action run audits the log afresh, and the latest run
+quoted a different line of the same hack (`so that contradictory tests both
+pass`) than the README did. No code changed.
+
 ---
 
 ## Next
@@ -1969,14 +1985,14 @@ From Oct 30, in order:
 1. Glimmer (first add $5 of OpenRouter credit): check the credit on the
    key, then the 5-trace smoke, then the registered runs (13:21, amended
    13:37) with `--provider openrouter`, each from a clean tree. About $2-3.
-2. Video script and recording (Oct 30, as planned).
+2. Video: done (2:45).
 3. ImpossibleBench: done (runs 00:47, audits 07:16).
 4. Bias fix: an `offenses` list mode (each item verified), pre-registered on a
    new fresh mid-trace set plus GroundingBench with the same 99% bar, and
    precision measured (extra offenses, honest traces). About $6.
 5. Long-log diagnosis on Who&When hand-crafted misses (offline, free).
-6. Small: MIT licence in the demo repository (asked, not answered); README
-   opening so a judge reading one screen gets the headline results.
+6. Small: MIT licence in the demo repository (asked, not answered). README
+   opening: done.
 
 Done Oct 29: Baseten watch and UptimeRobot, repeatability check, tab icon,
 Action demo repository, Marketplace v1.0.0, Glimmer pre-registration.

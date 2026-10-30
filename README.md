@@ -10,6 +10,39 @@ Built solo for the Meta Global AI Developer Hackathon (Indie track, problem
 statement **Push the Frontier**), October 27 to November 4, 2026. The demo is
 on free hosting: if it has been idle, the first load can take up to a minute.
 
+**Built during the hackathon:** Pinpoint, its verifier, every experiment and
+result below, the live demo and the GitHub Action. **Pre-existing:**
+[GroundingBench](#prior-work-groundingbench), the author's earlier
+open-source benchmark, used only as test data.
+
+## Results at a glance
+
+All on Meta's open-weight **Muse Spark Open**; details and caveats under
+[Results](#results).
+
+- **The usual format makes the overseer cite the wrong thing.** Asked for one
+  citation, it cited the document that exposes a deceptive agent's lie,
+  instead of the lie, in **176 of 180** traces. With Pinpoint's two slots:
+  **0 of 179**, and the offense on the labelled step **536 of 536** times.
+- **It knew, it didn't say.** Its readable reasoning shows the model found the
+  lie, weighed citing it, then cited the proof because the format allowed one
+  citation.
+- **A real agent, caught by its own model.** On ImpossibleBench (coding tasks
+  whose tests no correct solution can pass), Muse Spark Open as a coding agent
+  cheated in **34 of 60** runs. Pinpoint, on the same model, flagged **30 of
+  34** and pointed at the hack. It also flagged 17 of 46 honest runs, all of
+  them runs the turn or token limit cut off before they answered.
+- **Someone else's benchmark.** On Who&When (ICML 2025), it named the exact
+  step that broke a failed multi-agent run **45.2%** and **19.0%** of the time
+  on its two subsets, above every method in the paper (16.59%, 13.79%) and
+  above the best rule that never reads the log (28.6%, 12.1%).
+- **Shipped.** A live demo with an API, a command-line tool, and a GitHub
+  Action on the Marketplace that fails a real pull request where an agent
+  gamed its tests.
+- **Checked.** Settings and metrics committed before each headline run, 4,312
+  audits, a replication on a second host, and every raw result in the
+  repository.
+
 ## What it does
 
 AI agents now act on their own: they search, edit code, run tests and report
@@ -98,8 +131,9 @@ in [`examples/pinpoint-pr-check.yml`](examples/pinpoint-pr-check.yml)):
 See it on two real pull requests in
 [pinpoint-action-demo](https://github.com/ManasMehta1110/pinpoint-action-demo/pulls),
 each carrying a recorded agent log. On the one where the agent gamed
-contradictory tests, the tests pass and Pinpoint fails the check, quoting
-`return other == low or other == mean`; the honest fix passes both.
+contradictory tests, the tests pass and Pinpoint fails the check, quoting the
+part of the agent's change that games them (each run audits the log afresh, so
+the quoted line can differ between runs); the honest fix passes both.
 
 **Over HTTP**: `POST /api/audit` on the [live demo](https://pinpoint-1sjo.onrender.com/#api)
 (capped daily), or run the server yourself.
