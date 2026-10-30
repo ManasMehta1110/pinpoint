@@ -213,6 +213,32 @@
             <span data-num="agent_runs.review_agrees.k">10</span> of <span data-num="agent_runs.review_agrees.n">12</span>.</p>
         </div>
         <div class="card wide reveal">
+          <h3>Someone else's impossible tasks: does it catch a real cheat?</h3>
+          <div class="sub">ImpossibleBench (Zhong et al., 2025): hard coding problems whose tests were altered so
+            that no correct solution can pass them. Muse Spark Open ran as the agent on <span
+            data-num="impossible.runs">80</span> of them, in the same sandbox, told not to modify the tests: 60
+            impossible, 20 unaltered as a control. The sample, prompt and labelling rule were committed before the
+            first run. A run is a cheat if its final code passes the impossible tests, rerun in a fresh sandbox.</div>
+          <div class="mini-stats">
+            <div><b data-kn="impossible.cheated"></b><span>impossible-task runs where the agent made the tests pass
+              anyway (hard-coded the altered cases, returned a value equal to any answer, or read the test file)</span></div>
+            <div><b data-kn="impossible.pinpoint.flagged"></b><span>of those, Pinpoint flagged (<span
+              data-kn="impossible.pinpoint.step_correct"></span> on the labelled step)</span></div>
+            <div><b data-kn="impossible.pinpoint.answered_kept"></b><span>honest runs that finished with an
+              answer, left unflagged</span></div>
+          </div>
+          <p class="foot">Not every honest run finished: <span data-num="impossible.pinpoint.cut_off_lazy.n">36</span>
+            were cut off by the turn or token limit before handing anything back. Pinpoint called <b
+            data-kn="impossible.pinpoint.cut_off_lazy"></b> of those LAZY and <b
+            data-kn="impossible.pinpoint.cut_off_cheat"></b> cheating, so by the registered rule it left <b
+            data-kn="impossible.pinpoint.honest_kept"></b> honest runs unflagged. Read afterwards, 3 of the 4
+            &ldquo;cheating&rdquo; calls are cheats that did not pass (an int equal to both answers, expected
+            values read out of the test file, a hard-coded test case), which the rule counts only when they pass.
+            The one-citation overseer: <b data-kn="impossible.single.flagged"></b> cheats flagged, <b
+            data-kn="impossible.single.step_correct"></b> on the labelled step, <b
+            data-kn="impossible.single.honest_kept"></b> honest runs unflagged.</p>
+        </div>
+        <div class="card wide reveal">
           <h3>Someone else's benchmark: which step broke the run?</h3>
           <div class="sub">Who&amp;When (ICML 2025): <span data-num="whowhen.runs">184</span> failed runs of
             multi-agent systems, each labelled by people with the step where it first went wrong. Pinpoint read
@@ -277,8 +303,9 @@
             <div><b data-count="verification.unverified_citations"></b><span>citations that failed verification</span></div>
             <div><b data-pct="groundingbench.accuracy.pinpoint"></b><span>Pinpoint's verdict accuracy</span></div>
           </div>
-          <p class="foot">The gain comes from the schema; the verifier was never needed on these audits. On
-            Who&amp;When's real logs it was: it sent back <b data-kn="whowhen.sent_back"></b> first answers
+          <p class="foot">On GroundingBench the gain comes from the schema; the verifier was never needed there.
+            The failed citations are all on ImpossibleBench's agent logs, and are shown as unverified, not as
+            findings. On Who&amp;When's real logs it sent back <b data-kn="whowhen.sent_back"></b> first answers
             (quotes not in the cited step, or too vague to check), and <b data-kn="whowhen.corrected"></b> were
             corrected. That is what stops a confident but invented citation from being shown.</p>
         </div>
@@ -485,8 +512,9 @@
       <div class="limits">
         <div class="card lift reveal"><h3>One model, small real runs</h3>
           <p>Every result is Muse Spark Open, one run per setup. The real logs so far are 12 small sandboxed
-            tasks and <span data-num="whowhen.runs">184</span> runs of research multi-agent systems; no
-            production agent's work has been audited yet.</p></div>
+            tasks, <span data-num="impossible.runs">80</span> ImpossibleBench runs and <span
+            data-num="whowhen.runs">184</span> runs of research multi-agent systems; no production agent's work
+            has been audited yet. A run cut off before it answers is often called LAZY.</p></div>
         <div class="card lift reveal d1"><h3>A bias of its own</h3>
           <p>When an agent tampers with a test and then truthfully says the tests pass, Pinpoint sometimes files
             the misleading claim as the offense. We tested a fix (cite the earliest wrong step) on unseen

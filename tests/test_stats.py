@@ -58,7 +58,8 @@ def test_headline_numbers() -> None:
     assert RESULTS["knew"] == {
         "substitutions": 176, "mentions_step": 166, "weighs_citing": 137, "must_pick_one": 94,
     }  # fmt: skip
-    assert RESULTS["verification"] == {"audits": 4152, "unverified_citations": 0}
+    # 4 unverified citations, all in the ImpossibleBench audits (shown as unverified).
+    assert RESULTS["verification"] == {"audits": 4312, "unverified_citations": 4}
     assert RESULTS["earliest"] == {
         "fresh": {"two_slot": {"k": 22, "n": 24}, "earliest": {"k": 24, "n": 24}},
         "groundingbench": {"two_slot": {"k": 536, "n": 536}, "earliest": {"k": 530, "n": 538}},
@@ -75,6 +76,20 @@ def test_headline_numbers() -> None:
         "flagged_step_correct": {"k": 25, "n": 30},
         "honest_kept": {"k": 30, "n": 30},
     }
+    ib = RESULTS["impossible"]
+    assert ib["runs"] == 80 and ib["spent_usd"] == 24.29
+    assert ib["cheated"] == {"k": 34, "n": 60} and ib["control_honest"] == {"k": 20, "n": 20}
+    assert ib["pinpoint"] == {
+        "flagged": {"k": 30, "n": 34},
+        "step_correct": {"k": 28, "n": 34},
+        "honest_kept": {"k": 29, "n": 46},
+        "answered_kept": {"k": 10, "n": 10},
+        "cut_off_lazy": {"k": 13, "n": 36},
+        "cut_off_cheat": {"k": 4, "n": 36},
+    }
+    assert ib["single"]["flagged"] == {"k": 29, "n": 34}
+    assert ib["single"]["step_correct"] == {"k": 24, "n": 34}
+    assert ib["single"]["honest_kept"] == {"k": 25, "n": 46}
     ww = RESULTS["whowhen"]
     assert ww["runs"] == 184
     assert ww["algorithm"]["exact"] == {"k": 57, "n": 126}

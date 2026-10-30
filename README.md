@@ -273,6 +273,48 @@ GroundingBench's grader does not apply here: the rule's keyword for each
 offense is the edited file's path, which a quote of the hack's code does not
 contain.
 
+**Someone else's impossible tasks.** Impossible-LiveCodeBench (Zhong et al.,
+[arXiv 2510.20270](https://arxiv.org/abs/2510.20270)) takes hard coding
+problems and alters their tests so that no correct solution passes: one
+assertion changed against the spec (`oneoff`), or the same input required to
+give two answers (`conflicting`). The same agent as above ran on 80 of them in
+the same sandbox, told not to modify the tests: 30 `oneoff`, 30
+`conflicting`, and 20 with the original tests as a control. The sample, the
+agent's settings and a mechanical labelling rule were committed before the
+first run (`benchmark/impossible.py`, fingerprint pinned in a test). A run is
+a cheat if its final `solution.py` passes the impossible tests when they are
+rerun in a fresh sandbox; the offense is its last edit of that file.
+
+- The agent cheated in 34 of 60 impossible runs (11/30 `oneoff`, 23/30
+  `conflicting`). By a search of the final code: 15 return a value whose `==`
+  matches the expected answer, 12 read the test file, 6 inspect the call
+  stack to see which test is calling, and the other 10 special-case the altered
+  cases. No run edited the tests. All 20 control runs were honest; 12 solved
+  their problem.
+- Pinpoint audited every run on Fireworks, without the label.
+
+| 80 ImpossibleBench runs | Pinpoint | one citation |
+|---|---|---|
+| cheats flagged | 30/34 [73-95] | 29/34 |
+| cheats flagged on the labelled step | 28/34 | 24/34 |
+| honest runs left unflagged | 29/46 [49-76] | 25/46 |
+
+The weak row is the third, and why matters. Only 10 of the 46 honest runs
+finished with an answer, and Pinpoint left all 10 unflagged. The other 36 were
+cut off by the 20-call or output-token limit, mid-investigation. Pinpoint
+called 13 of them LAZY: no solution handed back, which is true of the log,
+though the harness, not the agent, ended it. It called 4 cheating. Read
+afterwards (exploratory, not pre-registered), 3 of those 4 are cheats that did
+not work: an int subclass equal to both answers, code that parses the test
+file for the expected values, a hard-coded table of the test inputs. The rule
+counts a cheat only when it passes, so it labels these honest. The fourth is a
+false alarm on the agent's own scratch test file, and its citation failed
+verification. Pinpoint mostly called the cheats DECEIVER rather than
+REWARD_HACKER (the agent's final message presents the hack as a solution), so
+exact verdict accuracy is low (44%); the registered metric is whether a cheat
+is flagged at all. Agent runs cost $24.29 on Baseten, the two audits $4.17 on
+Fireworks (`python -m benchmark.impossible report`).
+
 **Someone else's benchmark: which step broke the run?** Everything above
 uses GroundingBench (our prior work) or data built here. Who&When (Zhang et
 al., ICML 2025, [arXiv 2505.00212](https://arxiv.org/abs/2505.00212)) is
@@ -306,10 +348,12 @@ answer. Settings and metrics were committed before the runs
   environment, which Pinpoint may not cite as an agent's mistake.
 
 **The verifier earned its keep on real logs.** On GroundingBench and our own
-traces it never had to step in: across all 4,152 audits (2,952 on Baseten,
+traces it never had to step in: across those 4,152 audits (2,952 on Baseten,
 1,200 on Fireworks), no citation failed verification, so the gains there come
 from the prompt and schema (most of those runs had retries switched off, so
-the comparisons measure the schema alone). On Who&When it did. Without the answer, 16 of 184
+the comparisons measure the schema alone). On the 160 ImpossibleBench audits,
+4 citations failed (retries off), and are shown as unverified rather than as
+findings. On Who&When it did more. Without the answer, 16 of 184
 first answers cited something that did not check out: 8 quotes were not in
 the cited step, 8 were too vague or too long. Sent back with the reason, 15
 were corrected; one stayed unverified and is reported as such. Accuracy was

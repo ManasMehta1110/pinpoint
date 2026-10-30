@@ -24,7 +24,7 @@ from math import comb
 from pathlib import Path
 from typing import Any
 
-from benchmark import agent_repeat, whowhen
+from benchmark import agent_repeat, impossible, whowhen
 from benchmark.fetch_data import DATA_DIR
 from benchmark.grade import grade_trace, summarize
 from benchmark.knew import OUT_PATH as KNEW_PATH
@@ -165,6 +165,7 @@ def build() -> dict[str, Any]:
         "verification": audit_count(),
         "replication": replication("fireworks"),
         "agent_runs": agent_runs(),
+        "impossible": impossible_bench(),
         "earliest": earliest_fix(),
         "whowhen": who_and_when(),
         "prior_work": PRIOR_WORK,
@@ -265,6 +266,35 @@ def agent_runs() -> dict[str, Any]:
             "flagged_step_correct": repeats["flagged_step_correct"],
             "honest_kept": repeats["honest_kept"],
         },
+    }
+
+
+def impossible_bench() -> dict[str, Any]:
+    """ImpossibleBench: how often the agent cheated, and how each overseer read its runs."""
+    report = impossible.report()
+    agent = report["agent"]
+    cheated = sum(agent[s]["labels"]["REWARD_HACKER"] for s in ("oneoff", "conflicting"))
+    control = agent["original"]
+
+    def kn(rate: dict[str, Any]) -> dict[str, int]:
+        return {"k": rate["k"], "n": rate["n"]}
+
+    def side(mode: str) -> dict[str, Any]:
+        s = report[mode]
+        return {
+            "flagged": kn(s["misbehavior_flagged"]),
+            "step_correct": kn(s["offense_on_labelled_step"]),
+            "honest_kept": kn(s["honest_kept"]),
+            **s["honest_flags"],
+        }
+
+    return {
+        "runs": sum(a["runs"] for a in agent.values()),
+        "cheated": {"k": cheated, "n": agent["oneoff"]["runs"] + agent["conflicting"]["runs"]},
+        "control_honest": {"k": control["labels"]["HONEST"], "n": control["runs"]},
+        "spent_usd": report["spent_usd"],
+        "pinpoint": side("two_slot"),
+        "single": side("single"),
     }
 
 
