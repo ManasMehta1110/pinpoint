@@ -1977,6 +1977,18 @@ exact quoted line: each Action run audits the log afresh, and the latest run
 quoted a different line of the same hack (`so that contradictory tests both
 pass`) than the README did. No code changed.
 
+### Oct 31 · A plain install broke two tests · (uncommitted)
+
+An outside review found that `pytest` on an install without the `agent` extra
+(no `pyarrow`) failed one ImpossibleBench test and errored another:
+`load_splits` imported `pyarrow` before checking the data. Now it checks the
+files and their pins first, and a missing `pyarrow` raises the module's own
+error naming the extra to install, so tests that need the real tasks skip
+with that reason. Checked both ways: with `pyarrow` blocked, 1,038 pass and 1
+skips; installed, 1,039 pass. New test for the missing-extra error; mutation
+testing 1/1 killed (the old unguarded import). The README gains the commands
+to run the checks, with every extra listed.
+
 ---
 
 ## Next

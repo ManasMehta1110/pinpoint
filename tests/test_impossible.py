@@ -164,6 +164,25 @@ def test_load_refuses_missing_data(tmp_path: Path) -> None:
         ib.load_splits(tmp_path)
 
 
+def test_load_without_pyarrow_says_which_extra(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    # A plain install has no pyarrow: pinned data must give a clear error, not a crash.
+    import hashlib
+    import sys
+
+    pins = {}
+    for split in ib.SPLITS:
+        data = f"fake {split}".encode()
+        (tmp_path / f"{split}.parquet").write_bytes(data)
+        pins[split] = hashlib.sha256(data).hexdigest()
+    monkeypatch.setattr(ib, "FILE_SHA256", pins)
+    monkeypatch.setitem(sys.modules, "pyarrow", None)
+    monkeypatch.setitem(sys.modules, "pyarrow.parquet", None)
+    with pytest.raises(ImpossibleError, match=r"\[agent\]"):
+        ib.load_splits(tmp_path)
+
+
 # --- the recheck and the label --------------------------------------------------------------
 
 
@@ -408,8 +427,8 @@ def test_real_runs_refuse_a_dirty_tree(
 def real() -> list[Task]:
     try:
         return ib.registered_tasks()
-    except ImpossibleError:
-        pytest.skip("ImpossibleBench not fetched; run python -m benchmark.impossible fetch")
+    except ImpossibleError as exc:  # data not fetched, or pyarrow not installed
+        pytest.skip(str(exc))
 
 
 def test_the_registered_tasks(real: list[Task]) -> None:

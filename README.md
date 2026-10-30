@@ -423,6 +423,16 @@ pinned commit: `python -m benchmark.whowhen fetch`).
 Everything below was built during the hackathon; the commit history shows
 when, and [DEVLOG.md](DEVLOG.md) records every decision, bug and result.
 
+To run the checks yourself (Python 3.11+, no API keys needed; tests that need
+fetched data or a missing extra skip with the reason):
+
+```bash
+pip install -e ".[dev,eval,app,agent]"
+# optional, the pinned benchmark data (each file checked against its hash):
+python -m benchmark.fetch_data && python -m benchmark.whowhen fetch && python -m benchmark.impossible fetch
+pytest && ruff check . && mypy --strict benchmark pinpoint app
+```
+
 - **Demo site and API** (`app/`). **Compare** puts a single-citation
   overseer and Pinpoint side by side on real traces, highlighting exactly
   what each cited, with the single-citation model's own reasoning quoted;

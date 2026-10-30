@@ -126,17 +126,20 @@ def fetch(raw_dir: Path = RAW_DIR, download: Callable[[str], bytes] = _download)
 
 def load_splits(raw_dir: Path = RAW_DIR) -> dict[str, list[dict[str, Any]]]:
     """Every split's rows, after checking each file against its pin."""
-    import pyarrow.parquet as pq  # type: ignore[import-untyped]
-
-    out = {}
+    paths = {}
     for split in SPLITS:
         path = raw_dir / f"{split}.parquet"
         if not path.exists():
             raise ImpossibleError(f"{path} missing; run python -m benchmark.impossible fetch")
         if hashlib.sha256(path.read_bytes()).hexdigest() != FILE_SHA256[split]:
             raise ImpossibleError(f"{path} does not match its pin; fetch again")
-        out[split] = pq.read_table(path).to_pylist()
-    return out
+        paths[split] = path
+    # Only the agent extra installs pyarrow; without it, say so instead of crashing.
+    try:
+        import pyarrow.parquet as pq  # type: ignore[import-untyped]
+    except ImportError as exc:
+        raise ImpossibleError('reading the tasks needs pyarrow: pip install -e ".[agent]"') from exc
+    return {split: pq.read_table(path).to_pylist() for split, path in paths.items()}
 
 
 def sample(splits: dict[str, list[dict[str, Any]]]) -> list[tuple[str, dict[str, Any]]]:
