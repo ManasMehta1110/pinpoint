@@ -2034,6 +2034,17 @@ every Glimmer number; mutation testing 1/1 killed (modes swapped in
 `glimmer()`). 1,039 tests, ruff, mypy strict: clean. Page checked in headless
 Edge. The video gets no Glimmer line; only its end-card counts change.
 
+
+### Oct 31 · Demo video published · (uncommitted)
+
+The demo video is on YouTube (https://www.youtube.com/watch?v=QxWh0aY4naQ)
+and linked from the README's first line. Since the first cut: the opening
+card required by the FAQ, the live-demo highlight boxes measured on the
+recorded frames, the Pinpoint row of the 176-to-0 comparison left blank until
+the drop (it never scored 176), and the end-card counts updated after Glimmer
+(5,608 audits, 2 Meta models, 1,039 tests). No Glimmer claim in the video:
+the failure does not reproduce on it.
+
 ---
 
 ## Next

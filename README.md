@@ -4,6 +4,7 @@
 own evidence against the trace before showing it.**
 
 **[Live demo](https://pinpoint-1sjo.onrender.com/)** ·
+**[Demo video (2:45)](https://www.youtube.com/watch?v=QxWh0aY4naQ)** ·
 [Build log](DEVLOG.md) · [Every raw result](results/runs/)
 
 Built solo for the Meta Global AI Developer Hackathon (Indie track, problem
