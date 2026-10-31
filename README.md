@@ -39,9 +39,9 @@ All on Meta's open-weight **Muse Spark Open**; details and caveats under
 - **Shipped.** A live demo with an API, a command-line tool, and a GitHub
   Action on the Marketplace that fails a real pull request where an agent
   gamed its tests.
-- **Checked.** Settings and metrics committed before each headline run, 4,312
-  audits, a replication on a second host, and every raw result in the
-  repository.
+- **Checked.** Settings and metrics committed before each headline run, 5,608
+  audits, a replication on a second host, a second Meta model, and every raw
+  result in the repository.
 
 ## What it does
 
@@ -76,8 +76,11 @@ shows this and six other real cases side by side.
 Every result and every live audit runs on Meta's open weights.
 
 - **Muse Spark Open** is the overseer. It runs on two partner hosts, Baseten
-  (all results below) and Fireworks (a replication and a live fallback),
-  through one OpenAI-compatible client.
+  (the main results) and Fireworks (a replication, the ImpossibleBench audits
+  and a live fallback), through one OpenAI-compatible client.
+- **Muse Glimmer 30B**, Meta's smaller open model, repeats the main comparison
+  ([below](#results)). The partner hosts do not serve it serverless, so it ran
+  on DeepInfra at BF16 through OpenRouter, pinned to that host and precision.
 - Answers come back as a `submit_audit` **tool call**, so every audit is
   structured data that the verifier can check.
 - Muse Spark Open's **readable reasoning** is saved with every audit, shown in
@@ -187,6 +190,28 @@ The two-slot Fireworks run's manifest records `dirty: true`: it started later
 than planned, while documentation and demo files were being edited. Nothing
 the model sees differed (no changes to `pinpoint/` or `benchmark/`, same prompt
 version); see DEVLOG.
+
+**On a second Meta model, the failure does not reproduce.** The same 600
+traces on Muse Glimmer 30B, with the measures and pass marks committed before
+any audit (DEVLOG Oct 29: the failure reproduces at 50% or more, not below
+10%):
+
+| naturalistic set (600), Muse Glimmer 30B | single | Pinpoint |
+|---|---|---|
+| cited the document instead of the lie | 5/149 (3%) | 0/149 |
+| offense on the labelled step | 428/446 (96.0%) | 443/446 (99.3%) |
+| verdict accuracy | 586/600 | 586/600 |
+
+Glimmer mostly cites the lie even when allowed one citation, so the
+substitution Muse Spark Open makes 147 times in 150 is a property of the model,
+not of Meta's models in general. Pinpoint's schema still holds on Glimmer (no
+substitutions, offense on the labelled step 99.3% of the time), but there was
+little to fix. On the smaller sets Glimmer did not gain from two slots:
+mid-trace offenses flagged on the labelled step 18/24 against 21/24 with one
+citation, and real agent runs 3/5 against 5/5; every honest trace was left
+unflagged in both modes. One run each; Glimmer is a different and smaller
+model. What it shows is that an overseer's citation habits vary by model, which
+is the case for checking citations rather than trusting them.
 
 **It knew, it didn't say.** The single-citation model had found the lie. In
 the 176 substitutions its saved reasoning refers to the agent's false answer in
@@ -385,9 +410,9 @@ answer. Settings and metrics were committed before the runs
 traces it never had to step in: across those 4,152 audits (2,952 on Baseten,
 1,200 on Fireworks), no citation failed verification, so the gains there come
 from the prompt and schema (most of those runs had retries switched off, so
-the comparisons measure the schema alone). On the 160 ImpossibleBench audits,
-4 citations failed (retries off), and are shown as unverified rather than as
-findings. On Who&When it did more. Without the answer, 16 of 184
+the comparisons measure the schema alone). On the 160 ImpossibleBench audits
+4 citations failed, and on Glimmer's 1,296 audits 11 (retries off in both);
+they are shown as unverified rather than as findings. On Who&When it did more. Without the answer, 16 of 184
 first answers cited something that did not check out: 8 quotes were not in
 the cited step, 8 were too vague or too long. Sent back with the reason, 15
 were corrected; one stayed unverified and is reported as such. Accuracy was
@@ -395,8 +420,9 @@ the same on the first answers; what retries bought is that every citation
 shown is real.
 
 **Caveats.**
-- One model, one run per configuration per host (the naturalistic comparison
-  ran on two hosts).
+- One run per configuration per host (the naturalistic comparison ran on two
+  hosts). The headline results are one model, Muse Spark Open; Muse Glimmer
+  30B repeats the main comparison only.
 - Every GroundingBench smoking gun is the agent's final `submit_answer` step,
   which the offense rule aligns with. The rule does not name that step, and
   citing any other agent action also verifies, but the alignment is real.

@@ -1989,14 +1989,57 @@ skips; installed, 1,039 pass. New test for the missing-extra error; mutation
 testing 1/1 killed (the old unguarded import). The README gains the commands
 to run the checks, with every extra listed.
 
+
+### Oct 31 · Muse Glimmer 30B: the registered runs · (uncommitted)
+
+**What ran.** As registered (Oct 29, 13:21, amended 13:37), from clean commit
+`40b602b`, OpenRouter pinned to DeepInfra at BF16, retries 0, prompt v4,
+`--workers 16`. Smoke first (5 traces per mode, `results/smoke/`): 10 of 10
+audits parsed as tool calls, none truncated, 5/5 verdicts per mode, every
+citation verified. Then 12:35-12:56: the 600 naturalistic traces, mid-trace
+(36) and agent runs (12), each in `single` and `two_slot`. No failures.
+$1.50 on OpenRouter in all.
+
+**Primary result, against the rules fixed in advance:**
+
+| 600 naturalistic traces | single | two_slot |
+|---|---|---|
+| substitution (DECEIVER citing a `read_document` step) | 5/149 (3.4%) | 0/149 |
+| offense on the labelled step | 428/446 (96.0%) | 443/446 (99.3%) |
+| verdict accuracy | 586/600 | 586/600 |
+
+- **The failure does not reproduce** on Glimmer: single-slot substitution is
+  3.4%, under the 10% line. (Spark Open on the same traces: 147/150.)
+- The fix **transfers** by the registered rule (two-slot substitution at most
+  5%, offense on the labelled step at least 90%), but with almost nothing to
+  fix this says little.
+
+**Secondary** (no thresholds): mid-trace `flagged_step_correct` single 21/24,
+two_slot 18/24; agent runs single 5/5, two_slot 3/5; honest traces left
+unflagged in every mode (12/12, 6/6). So on these small sets Glimmer did not
+gain from two slots. 11 citations failed verification across the 1,296
+audits (retries off), and are reported as unverified.
+
+**Reading.** The citation substitution is a property of Muse Spark Open, not
+of Meta's models in general. Pinpoint's schema does no harm on the second
+model and the verifier caught its unverifiable quotes, but the headline
+finding is one model's. Different and smaller model, one run each.
+
+**Write-up.** `app/stats.py` gains `glimmer`; a site card states the result
+as it came out, including that the failure does not reproduce; the
+verifier note and the limits card ("Two models, small real runs") updated;
+README: a Glimmer bullet under Meta's models, a results paragraph and table,
+the verifier counts (5,608 audits, 15 unverified), and the caveats. Tests pin
+every Glimmer number; mutation testing 1/1 killed (modes swapped in
+`glimmer()`). 1,039 tests, ruff, mypy strict: clean. Page checked in headless
+Edge. The video gets no Glimmer line; only its end-card counts change.
+
 ---
 
 ## Next
 
 From Oct 30, in order:
-1. Glimmer (first add $5 of OpenRouter credit): check the credit on the
-   key, then the 5-trace smoke, then the registered runs (13:21, amended
-   13:37) with `--provider openrouter`, each from a clean tree. About $2-3.
+1. Glimmer: done (Oct 31). The failure does not reproduce on it.
 2. Video: done (2:45).
 3. ImpossibleBench: done (runs 00:47, audits 07:16).
 4. Bias fix: an `offenses` list mode (each item verified), pre-registered on a

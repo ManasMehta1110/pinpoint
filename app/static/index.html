@@ -296,6 +296,25 @@
           </div>
         </div>
         <div class="card wide reveal">
+          <h3>A second Meta model: Muse Glimmer 30B</h3>
+          <div class="sub">The same <span data-num="glimmer.realistic.accuracy.single.n">600</span> naturalistic traces on
+            Meta's smaller open model, with settings and pass marks committed before the runs.</div>
+          <div class="mini-stats">
+            <div><b data-kn="glimmer.realistic.substitution.single"></b><span>with one citation, it cited the source
+              instead of the lie: the failure does not reproduce on this model</span></div>
+            <div><b data-kn="glimmer.realistic.substitution.pinpoint"></b><span>with Pinpoint's two slots</span></div>
+            <div><b data-kn="glimmer.realistic.step_correct.pinpoint"></b><span>Pinpoint's offense on the labelled step
+              (one citation: <span data-kn="glimmer.realistic.step_correct.single"></span>)</span></div>
+          </div>
+          <p class="foot">So the citation failure depends on the model, which is why the overseer's citations are
+            checked rather than trusted. On the smaller sets Glimmer did not gain from two slots: mid-trace offenses
+            flagged on the labelled step <b data-kn="glimmer.midtrace.pinpoint.flagged_step_correct"></b> against
+            <b data-kn="glimmer.midtrace.single.flagged_step_correct"></b> with one citation, real agent runs
+            <b data-kn="glimmer.agentruns.pinpoint.flagged_step_correct"></b> against
+            <b data-kn="glimmer.agentruns.single.flagged_step_correct"></b>. Served by DeepInfra at BF16 through
+            OpenRouter, since the partner hosts do not offer it serverless; one run each.</p>
+        </div>
+        <div class="card wide reveal">
           <h3>The verifier is a guarantee</h3>
           <div class="sub">Every saved audit, every citation checked against its trace</div>
           <div class="mini-stats">
@@ -303,9 +322,9 @@
             <div><b data-count="verification.unverified_citations"></b><span>citations that failed verification</span></div>
             <div><b data-pct="groundingbench.accuracy.pinpoint"></b><span>Pinpoint's verdict accuracy</span></div>
           </div>
-          <p class="foot">On GroundingBench the gain comes from the schema; the verifier was never needed there.
-            The failed citations are all on ImpossibleBench's agent logs, and are shown as unverified, not as
-            findings. On Who&amp;When's real logs it sent back <b data-kn="whowhen.sent_back"></b> first answers
+          <p class="foot">On Muse Spark Open's GroundingBench audits the gain comes from the schema; the verifier
+            was never needed there. The failed citations are on ImpossibleBench's agent logs and on Glimmer's
+            audits, and are shown as unverified, not as findings. On Who&amp;When's real logs it sent back <b data-kn="whowhen.sent_back"></b> first answers
             (quotes not in the cited step, or too vague to check), and <b data-kn="whowhen.corrected"></b> were
             corrected. That is what stops a confident but invented citation from being shown.</p>
         </div>
@@ -510,8 +529,9 @@
       <div class="kicker reveal">Honest limits</div>
       <h2 class="section-title reveal">What this does not show yet.</h2>
       <div class="limits">
-        <div class="card lift reveal"><h3>One model, small real runs</h3>
-          <p>Every result is Muse Spark Open, one run per setup. The real logs so far are 12 small sandboxed
+        <div class="card lift reveal"><h3>Two models, small real runs</h3>
+          <p>Every headline result is Muse Spark Open, one run per setup; Muse Glimmer 30B repeats the main
+            comparison only. The real logs so far are 12 small sandboxed
             tasks, <span data-num="impossible.runs">80</span> ImpossibleBench runs and <span
             data-num="whowhen.runs">184</span> runs of research multi-agent systems; no production agent's work
             has been audited yet. A run cut off before it answers is often called LAZY.</p></div>

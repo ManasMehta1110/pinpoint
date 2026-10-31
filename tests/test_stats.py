@@ -58,8 +58,18 @@ def test_headline_numbers() -> None:
     assert RESULTS["knew"] == {
         "substitutions": 176, "mentions_step": 166, "weighs_citing": 137, "must_pick_one": 94,
     }  # fmt: skip
-    # 4 unverified citations, all in the ImpossibleBench audits (shown as unverified).
-    assert RESULTS["verification"] == {"audits": 4312, "unverified_citations": 4}
+    # 15 unverified citations: 4 in ImpossibleBench's audits, 11 in Glimmer's (shown as such).
+    assert RESULTS["verification"] == {"audits": 5608, "unverified_citations": 15}
+    gl = RESULTS["glimmer"]["realistic"]
+    # Registered (DEVLOG Oct 29): reproduces at >= 50% substitution, not below 10%.
+    assert gl["substitution"] == {"single": {"k": 5, "n": 149}, "pinpoint": {"k": 0, "n": 149}}
+    assert gl["step_correct"] == {"single": {"k": 428, "n": 446}, "pinpoint": {"k": 443, "n": 446}}
+    assert gl["accuracy"] == {"single": {"k": 586, "n": 600}, "pinpoint": {"k": 586, "n": 600}}
+    small = RESULTS["glimmer"]
+    assert small["midtrace"]["single"]["flagged_step_correct"] == {"k": 21, "n": 24}
+    assert small["midtrace"]["pinpoint"]["flagged_step_correct"] == {"k": 18, "n": 24}
+    assert small["agentruns"]["single"]["flagged_step_correct"] == {"k": 5, "n": 5}
+    assert small["agentruns"]["pinpoint"]["flagged_step_correct"] == {"k": 3, "n": 5}
     assert RESULTS["earliest"] == {
         "fresh": {"two_slot": {"k": 22, "n": 24}, "earliest": {"k": 24, "n": 24}},
         "groundingbench": {"two_slot": {"k": 536, "n": 536}, "earliest": {"k": 530, "n": 538}},

@@ -164,6 +164,7 @@ def build() -> dict[str, Any]:
         },
         "verification": audit_count(),
         "replication": replication("fireworks"),
+        "glimmer": glimmer(),
         "agent_runs": agent_runs(),
         "impossible": impossible_bench(),
         "earliest": earliest_fix(),
@@ -322,6 +323,30 @@ def replication(provider: str) -> dict[str, Any]:
         }
 
     return {"provider": provider, "original": side("baseten"), "rerun": side(provider)}
+
+
+def glimmer() -> dict[str, Any]:
+    """Meta's smaller open model, Muse Glimmer 30B, on the registered runs (DEVLOG Oct 29)."""
+    host = "openrouter"
+    real = replication(host)["rerun"]
+
+    def small(stem: str) -> dict[str, Any]:
+        out = {}
+        for mode, key in (("single", "single"), ("two_slot", "pinpoint")):
+            s = _summary([f"{stem}-{host}-{mode}-retry0"])
+            honest = s["confusion"].get("HONEST", {})
+            out[key] = {
+                "flagged_step_correct": _kn(s["flagged_step_correct"]),
+                "honest_kept": {"k": honest.get("HONEST", 0), "n": sum(honest.values())},
+            }
+        return out
+
+    return {
+        "model": "meta/muse-glimmer-30b",
+        "realistic": real,
+        "midtrace": small("midtrace"),
+        "agentruns": small("agentruns"),
+    }
 
 
 def render(stats: dict[str, Any]) -> str:

@@ -85,6 +85,85 @@
    "n": 90
   }
  },
+ "glimmer": {
+  "agentruns": {
+   "pinpoint": {
+    "flagged_step_correct": {
+     "k": 3,
+     "n": 5
+    },
+    "honest_kept": {
+     "k": 6,
+     "n": 6
+    }
+   },
+   "single": {
+    "flagged_step_correct": {
+     "k": 5,
+     "n": 5
+    },
+    "honest_kept": {
+     "k": 6,
+     "n": 6
+    }
+   }
+  },
+  "midtrace": {
+   "pinpoint": {
+    "flagged_step_correct": {
+     "k": 18,
+     "n": 24
+    },
+    "honest_kept": {
+     "k": 12,
+     "n": 12
+    }
+   },
+   "single": {
+    "flagged_step_correct": {
+     "k": 21,
+     "n": 24
+    },
+    "honest_kept": {
+     "k": 12,
+     "n": 12
+    }
+   }
+  },
+  "model": "meta/muse-glimmer-30b",
+  "realistic": {
+   "accuracy": {
+    "pinpoint": {
+     "k": 586,
+     "n": 600
+    },
+    "single": {
+     "k": 586,
+     "n": 600
+    }
+   },
+   "step_correct": {
+    "pinpoint": {
+     "k": 443,
+     "n": 446
+    },
+    "single": {
+     "k": 428,
+     "n": 446
+    }
+   },
+   "substitution": {
+    "pinpoint": {
+     "k": 0,
+     "n": 149
+    },
+    "single": {
+     "k": 5,
+     "n": 149
+    }
+   }
+  }
+ },
  "groundingbench": {
   "accuracy": {
    "pinpoint": {
@@ -284,8 +363,8 @@
   }
  },
  "verification": {
-  "audits": 4312,
-  "unverified_citations": 4
+  "audits": 5608,
+  "unverified_citations": 15
  },
  "whowhen": {
   "algorithm": {
